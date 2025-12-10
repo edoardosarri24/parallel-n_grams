@@ -6,20 +6,20 @@ In this chapter we present the main aspect of the sequential implementation to c
 \section{Pipeline}
 Let's look the pipeline of our sequential algorithm. This was implemented in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/c57c7fc52c9bcaa8fb9ba1403b795b0793713a49/sequential/src/main.c}{main.c} file.
 \begin{itemize}
-    \item We take a text file and we pre-precessing it. The implementation write all the characters except fot the space and the punctuation; between two token we write ony a single space. After this step we have a normalized file in \textit{data/normalized\_file.txt}.
-    \item TODO
-    \item We iterate throught the input and consider the current $n$-gram.
-    \item We calculate the hash value of this $n$-gram.
-    \item We scrool throught the whole list related to the index calculate in the previous step:
+    \item We take the text input file, that must be named as \textit{input.txt} and must be in \textit{data} directory, and we pre-precessing it. The implementation write all the characters except the space and the punctuation; between two token we write ony a single space. After this step we have a normalized file in \textit{data/normalized\_file.txt}.
+    \item We iterate over all the $n$-gram in this normalized file:
     \begin{itemize}
-        \item If current $n$-gram match one already found, we increase the related counter.
-        \item Althought we insert as new node in the chain and initialize the counter to one.
+        \item Find the next $n$-gram.
+        \item Use the \texttt{add\_gram} function in \textit{hash\_table.c} file to add the $n$-gram in out hash table. This function increase the related counter if current $n$-gram match one already found; althought we insert as new node in the chain and initialize the counter to one.
     \end{itemize}
-    \item We pass to the next $n$-gram.
+    \item Stop when there aren't another $n$-gram.
+    \item TODOOOOO: visualizzazione.
+    \item Release the memory allocated for the hash table.
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Hash table}
+\label{sec:hash_table_sequential}
 In Section~\ref{sec:hash_table} we have defined our approch to the hash function. Now we must implent the hash table with its functionalities.
 
 \myskip
@@ -38,4 +38,8 @@ In fact, suppose that $H_i$ can store in 32 bits we can prove that the intermedi
 \subsection{Implementation}
 The implementation of the hash table is in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/c57c7fc52c9bcaa8fb9ba1403b795b0793713a49/sequential/src/hash_table.c}{hash\_table.c} file.
 
-In addition to the code, observe that the $n$-gram dimension (i.e., the $n$ value) is define in the \textit{CMakeLists.txt} file. This give us the possibility to pass this iperparaeter from terminal we we execute the prorgam.
+We have to observe two things:
+\begin{itemize}
+    \item The $n$-gram dimension (i.e., the $n$ value) is define in the \textit{CMakeLists.txt} file. This give us the possibility to pass this iperparaeter from terminal when we execute the prorgam.
+    \item Due to the osservation at the starting of the Section~\ref{sec:hash_table_sequential}, we use to memorize the hash value the type \texttt{uint\_fast32\_t}. This garentee the maximum speedy type in the architecture that has almost 32 bits.
+\end{itemize}

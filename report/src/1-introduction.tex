@@ -2,6 +2,14 @@
 The main goal of this project is to count the $n$-gram (the occurencies of $n$ consecutive word) present in an input file. This will be addressed with two approaches: with the sequential implementation in Chapter~\ref{cap:sequential} and with the parallel implementation in Chapter~\ref{cap:parallel}. After these tow implementations we will evaluate the performance in Chapter~\ref{cap:analysis}, with particular focus on the speed-up.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Features}
+Obviously the main goal is two count the $n$-gram. Others features are:
+\begin{itemize}
+    \item We can pass the $n$ value (of the $n$-gram) at compilation time.
+    \item There is a stride $k$ that allow us to skip $k$ word when we compute the $n$-gram.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Pre-processing}
 The pipeline that we followed for the input pre-processing consists in collect the input file and normalizating it.
 
