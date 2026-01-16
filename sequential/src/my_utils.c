@@ -1,22 +1,27 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "my_utils.h"
 
-char *next_ngram(FILE *src) {
-    // variables.
-    char words[N_GRAM_SIZE][256];
-    char *ngram = (char *)malloc(N_GRAM_SIZE * 256 * sizeof(char));
-    long start_position = ftell(src);
-    // save the words of the next ngram.
-    for (int i=0; i<N_GRAM_SIZE; i++) {
-        if (fscanf(src, "%255s", words[i]) != 1)
-            return NULL;
+// Checks if a pointer is NULL (memory allocation error).
+void check_initialization(void *ptr, const char *msg) {
+    if (!ptr) {
+        perror(msg);
+        exit(EXIT_FAILURE);
     }
-    // compose the next ngrams.
-    int offset = 0;
-    for (int i = 0; i < N_GRAM_SIZE; i++) {
-        offset += sprintf(ngram + offset, "%s%s", words[i], (i == N_GRAM_SIZE - 1) ? "" : " ");
+}
+
+void check_initialization_eventually_free(void *ptr, void *to_free, const char *msg) {
+    if (!ptr) {
+        perror(msg);
+        free(to_free);
+        exit(EXIT_FAILURE);
     }
-    // come back to the original file poitner position.
-    fseek(src, start_position, SEEK_SET);
-    return ngram;
+}
+
+// Checks if a pointer is NULL (logical error).
+void check_ptr(void *ptr, const char *msg) {
+    if (!ptr) {
+        fprintf(stderr, "Error: %s\n", msg);
+        exit(EXIT_FAILURE);
+    }
 }

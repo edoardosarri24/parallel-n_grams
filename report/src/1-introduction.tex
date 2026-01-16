@@ -5,8 +5,9 @@ The main goal of this project is to count the $n$-gram (the occurencies of $n$ c
 \section{Features}
 Obviously the main goal is two count the $n$-gram. Others features are:
 \begin{itemize}
-    \item We can pass the $n$ value (of the $n$-gram) at compilation time.
-    \item There is a stride $k$ that allow us to skip $k$ word when we compute the $n$-gram.
+    \item We can define the $n$ value (of the $n$-gram) at compilation time passing the parameter $N\_GRAM\_SIZE$. By default is $N\_GRAM\_SIZE=3$.
+    \item There is a stride $k$ that allow us to skip $k$ word when we compute the next $n$-gram. We can provide it during the compilation with $STRIDE$ parameter. By default is $STRIDE=1$.
+    \item At the end of computation, the system print some statistics (see Section~\ref{sec:statistics}) abount the text and abount the hash table performance.
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -14,7 +15,7 @@ Obviously the main goal is two count the $n$-gram. Others features are:
 The pipeline that we followed for the input pre-processing consists in collect the input file and normalizating it.
 
 \subsection{Input collection}
-We have to collect some text to analyze. In our experiment we use \textit{.txt} file.
+The file that we will analyse must be in the \textit{data/} folder and must be named as \textit{input.txt}.
 
 \subsection{Normalization}
 \label{sec:normalizzation}
@@ -30,13 +31,13 @@ We addressed this in these ways:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Hash table}
 \label{sec:hash_table}
-We have to be able to count the trigrams; to address efficiently this goal we will use the hash-table.
+We have to be able to count the trigrams; to address efficiently this goal we will use the hash-table structure. We have to define the hash function to obtain the index in the has table and the caratteristichs of the hash table.
 
 \subsection{Hash function}
 \label{sec:hash_function}
-In a hash table we must define the hash function to calculate the table index of the elements. We have to calculate the index of strings, so we adopt the \textbf{Polynomial Rolling Hash}~\cite{polinomial_strings_hashing}: given the string $c_1\cdots c_n$, its hash value is defined by $$\displaystyle H(c_1\cdots c_n)=\sum_{i=1}^n(c_i\cdot p^{i-1})mod M.$$
+In a hash table we must define the hash function to calculate the table index of the elements. We have to calculate the index of strings, so we adopt the \textbf{Polynomial Rolling Hash} technique~\cite{polinomial_strings_hashing}: given the string $c=c_1\cdots c_n$, its hash value is defined by $$\displaystyle H(c)=\sum_{i=1}^n(c_i\cdot p^{i-1})mod M.$$
 
-This approch to obtain the hash value is inefficient and dangerous for the overflow. We can exploit the distributive property of the module operation: given $H(c_1\cdots c_i)$, we have that $H(c_1\cdots c_ic_{i+1})=(H(c_1\cdots c_i)\cdot p+c_{i+1})mod M$. This garantee, with the correct choice of $p$ and $M$ like the one below, the absence of overflow.
+This approch to obtain the hash value is inefficient and dangerous for the overflow. We can exploit the distributive property of the module operation: given $H(c_1\cdots c_i)$, we can obtain $H(c_1\cdots c_ic_{i+1})=(H(c_1\cdots c_i)\cdot p+c_{i+1})mod M$. This garantee, with the correct choice of $p$ and $M$ like the one below, the absence of overflow.
 
 \subsection{Hash table characteristics}
 Considering what was said above, the hash table has these characteristics:
@@ -44,4 +45,38 @@ Considering what was said above, the hash table has these characteristics:
     \item The dimension of the index vector corresponde to the $M$ value.
     \item We resolve the collisions with the open chain method: every position in the table is a pointer to the data that share the same hash value.
     \item Each node of the open chain is composed by the string (i.e., the $n$-gram) as key and the counter as value.
+\end{itemize}
+
+\subsection{Choice of hyperparameters}
+For the $M$ and $p$ value in generale there is a rule of thumb that says to pick both values as prime numbers with M as large as possible. Starting from this:
+\begin{itemize}
+    \item $p$: Must be grether than the dimension of the alphabet to reduce the probability of collisions. In the computing we analyse the corpus byte-by-byte, so if the $p$ value is larger thant 256 it will be fine. We took $p=257$, the first prime number after 256.
+    \item $M$: The choice of $M$ determ the load factor of the hash table, that can be defined as $\alpha=\tfrac{number\_of\_stored\_element}{table\_dimension}$. We can compute in the way that of can obtain $\alpha=\tfrac{expected\_unic\_n-gram}{1.5\times expected\_unic\_n-gram}\approx0.67<1$, that usually is a good load factor. To determine the $expected\_unic\_n-gram$ the best option is use an empiracal estimate sampling from the corpus like $unic\_sampling\_n-gram\times\tfrac{total\_words}{salpled\_word}$. For our goal this isn't a foundamntal factor, so we took simply the prime number after 150K, i.e. $M=150K$.
+\end{itemize}
+
+\subsection{Overflow}
+\label{sec:overflow}
+Thanks to these choice and the calculation tric for the hash function, defined in Section~\ref{sec:normalizzation}, we are sure that we haven't overflow error if we store the intermediate result in 32 bits variable.
+
+In fact, suppose that $H_i$ can store in 32 bits we can prove that the intermediate variable used can be store in 32 bits: in the worst case we have that $intermediate\_var\_dim=(M-1)\cdot p+c_{max}<2^{32}$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Statistics}
+\label{sec:statistics}
+Once we have populated the hash table structure we have to print the statistics of our $n$-gram. In some case print the distribution (i.e., the PDF) of our dataset is usefull, but in this case this means print the frequency of all encountered word: for a big corpus this is not reccomended due to the high number of unique $n$-gram.
+
+We have considered the below statistics:
+\begin{itemize}
+    \item Text statistics \\
+        We cosidered the follow text statistics:
+        \begin{itemize}
+            \item The $K$ $n$-gram with the highest frequency (with thei frequency). The parameter $K$ can be configured at compilation time with the parameter $TOP\_K$ (default $TOP\_K=10$).
+            \item The number of unique $n$-gram.
+        \end{itemize}
+    \item Hash table performance \\
+        We considered the follow statistic to evaluate the hash table performance:
+        \begin{itemize}
+            \item The mean and the max length of the list.
+            \item Load factor $\alpha$, i.e. the ratio between the busy bucket and the total bucket.
+        \end{itemize}
 \end{itemize}

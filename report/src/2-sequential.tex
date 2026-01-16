@@ -1,45 +1,49 @@
 \chapter{Sequential}
 \label{cap:sequential}
-In this chapter we present the main aspect of the sequential implementation to count the $n$-grams in an input.
+In this chapter we present the main aspect of the sequential implementation to count the $n$-grams in an input, that is in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/cf8e82b27f908c5c836d37a205fc04d8d7fed5be/sequential}{sequential} GitHub folder.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Pipeline}
 Let's look the pipeline of our sequential algorithm. This was implemented in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/c57c7fc52c9bcaa8fb9ba1403b795b0793713a49/sequential/src/main.c}{main.c} file.
-\begin{itemize}
-    \item We take the text input file, that must be named as \textit{input.txt} and must be in \textit{data} directory, and we pre-precessing it. The implementation write all the characters except the space and the punctuation; between two token we write ony a single space. After this step we have a normalized file in \textit{data/normalized\_file.txt}.
-    \item We iterate over all the $n$-gram in this normalized file:
-    \begin{itemize}
-        \item Find the next $n$-gram.
-        \item Use the \texttt{add\_gram} function in \textit{hash\_table.c} file to add the $n$-gram in out hash table. This function increase the related counter if current $n$-gram match one already found; althought we insert as new node in the chain and initialize the counter to one.
-    \end{itemize}
-    \item Stop when there aren't another $n$-gram.
-    \item TODOOOOO: visualizzazione.
+\begin{enumerate}
+    \item We take the text input file, that must be named as \textit{input.txt} and must be in \textit{data} directory, and we pre-precessing it. The implementation, that is \href{https://github.com/edoardosarri24/parallel-trigrams/blob/cf8e82b27f908c5c836d37a205fc04d8d7fed5be/sequential/src/my_utils.c}{my\_utils.c} file: write all the characters except the space and the punctuation; between two token we write ony a single space. After this step we have a normalized corpus in \textit{data/normalized\_file.txt}.
+    \item We allocate memory for the hash table.
+    \item We iterate over all the $n$-gram in this normalized file and stop when there aren't another $n$-gram to analyse.
+    \begin{enumerate}
+        \item Find the next $n$-gram with \href{https://github.com/edoardosarri24/parallel-trigrams/blob/cf8e82b27f908c5c836d37a205fc04d8d7fed5be/sequential/src/my_utils.c}{next\_ngram} function.
+        \item Use the \texttt{add\_gram} function in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/cf8e82b27f908c5c836d37a205fc04d8d7fed5be/sequential/src/hash_table.c}{hash\_table.c} file to add the $n$-gram in out hash table. This function increase the related counter if current $n$-gram match one already found; althought we insert as new node in the chain and initialize the counter to one. At the end it return with the cursor in the initial position (relative to this function call) of the corpus.
+        \item Move \textit{STRIDE} words forward in the corpus.
+    \end{enumerate}
+    \item Colects and prints the statistics.
     \item Release the memory allocated for the hash table.
-\end{itemize}
+\end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Hash table}
-\label{sec:hash_table_sequential}
-In Section~\ref{sec:hash_table} we have defined our approch to the hash function. Now we must implent the hash table with its functionalities.
+The major complexity si in the \href{https://github.com/edoardosarri24/parallel-trigrams/blob/cf8e82b27f908c5c836d37a205fc04d8d7fed5be/sequential/src/hash_table.c}{hash\_table.c} file that modeling the hash table structure and its operation.
 
-\myskip
-
-Let's start from the key value of the function, $p$ and $M$. In general there is a rule of thumb that says to pick both values as prime numbers with M as large as possible. Starting from this:
+Now we see the main characteristics of this implementation:
 \begin{itemize}
-    \item $p$: Must be grether than the dimension of the alphabet. Thanks to normalizzation, described in Section~\ref{sec:normalizzation}, our dictionary dimention isn't to much big. We took $p=101$.
-    \item $M$: The choice of $M$ determ the load factor of the hash table, that can be defined as $\alpha=\tfrac{number\_of\_stored\_element}{table\_dimension}$. We can compute in the way that of can obtain $\alpha=\tfrac{expected\_unic\_n-gram}{1.5\times expected\_unic\_n-gram}\approx0.67<1$, that usually is a good load factor. To determine the $expected\_unic\_n-gram$ the best option is use an empiracal estimate sampling from the corpus like $unic\_sampling\_n-gram\times\tfrac{total\_words}{salpled\_word}$. For our goal this isn't a foundamntal factor, so we took simply the prime number after 150K, i.e. $M=150K$.
+    \item In the Section~\ref{sec:overflow} we said that we must using almost a 32bits variable to avoid the overflow of intermediate value during the index calculation. To obtain this goal we have used the \textit{uint\_fast32\_t} C type that garantee the faster type that have almost 32bits.
 \end{itemize}
 
-\subsection{Overflow}
-Thanks to these choice and the calculation tric for the hash function, defined in Section~\ref{sec:normalizzation}, we are sure that we haven't overflow error if we store the intermediate result in 32 bits variable.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Statistics}
+To extract the statistics described in Section~\ref{sec:statistics}, we implemented two function in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/master/sequential/src/statistics.c}{statistics.c}.
 
-In fact, suppose that $H_i$ can store in 32 bits we can prove that the intermediate variable used can be store in 32 bits: in the worst case we have that $intermediate\_var=(M-1)\cdot p+c_{max}<2^{32}$.
+\subsection{Text statistics}
+For the text statistics the algorithm follows the steps below:
+\begin{enumerate}
+    \item Traverse the whole hash table statucture to count the total number of unique $n$-grams.
+    \item Allocate a temporary array of \texttt{Node} pointers of size $N$, where $N$ is the numbers of unique $n$-grams. This allocation was obtained using the malloc function: using the variable lenght array (i.e., specifing the dimension of the array) the array is allocated in the stack, that is faster but smaller; using the malloc function the array is allocated in the heap memory. When the dimension of the array is unknown or very large it's better to use the dinamic allocation to avoid stack overflow.
+    \item Populate the array with the nodes in the hash table.
+    \item Sort the array using the standard C library function \textit{qsort}, with a custom comparator that orders nodes by frequency in descending order.
+    \item Print the top $K$ elements from the sorted array and the count of unique $n$-grams.
+    \item Free the allocated array.
+\end{enumerate}
 
-\subsection{Implementation}
-The implementation of the hash table is in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/c57c7fc52c9bcaa8fb9ba1403b795b0793713a49/sequential/src/hash_table.c}{hash\_table.c} file.
-
-We have to observe two things:
-\begin{itemize}
-    \item The $n$-gram dimension (i.e., the $n$ value) is define in the \textit{CMakeLists.txt} file. This give us the possibility to pass this iperparaeter from terminal when we execute the prorgam.
-    \item Due to the osservation at the starting of the Section~\ref{sec:hash_table_sequential}, we use to memorize the hash value the type \texttt{uint\_fast32\_t}. This garentee the maximum speedy type in the architecture that has almost 32 bits.
-\end{itemize}
+\subsection{Hash table performance}
+For the hash table performance the pipeline is the following:
+\begin{enumerate}
+    \item TODO
+\end{enumerate}
