@@ -11,49 +11,83 @@ static int compare_nodes(const void *a, const void *b) {
     return (nodeB->counter - nodeA->counter);
 }
 
-static size_t count_unique_ngrams(HashTable *hashTable) {
-    size_t count = 0;
+static int find_element_with_min_frequency(Node **top_ngrams) {
+    int min_idx = 0;
+    for (int j=1; j < TOP_K; ++j) {
+        if (top_ngrams[j]->counter < top_ngrams[min_idx]->counter)
+            min_idx=j;
+    }
+    return min_idx;
+}
+
+void print_text_statistics(HashTable *hashTable) {
+    check_ptr(hashTable, "print_text_statistics in statistics.c received NULL hashTable");
+    // variables.
+    size_t unique_ngrams = 0;
+    Node *top_ngrams[TOP_K] = {NULL};
+    int filled = 0;
+    // Travers the hashtable: increment the counter and fnd top k ngrams.
     for (int i=0; i < hashTable->buckets_size; ++i) {
         Node *current = hashTable->buckets[i];
         while (current) {
-            count++;
+            unique_ngrams++;
+            // check if top_ngrams is not full
+            if (filled < TOP_K) {
+                top_ngrams[filled] = current;
+                filled++;
+            } else {
+                // Find the index of element with the minimum frequency in top_ngrams.
+                int min_idx = find_element_with_min_frequency(top_ngrams);
+                // If current node has higher frequency than the minimum, replace it.
+                if (current->counter > top_ngrams[min_idx]->counter) {
+                    top_ngrams[min_idx] = current;
+                }
+            }
             current = current->next;
         }
     }
-    return count;
-}
-
-void get_text_statistics(HashTable *hashTable) {
-    check_ptr(hashTable, "get_text_statistics in statistics.c received NULL hashTable");
-    // Count the unique n-grams
-    const size_t unique_ngrams = count_unique_ngrams(hashTable);
     if (unique_ngrams == 0) {
         printf("No n-grams found.\n");
         return;
     }
-    // Define, populate and sort the temporary array
-    Node **unique_ngrams_array = malloc(unique_ngrams * sizeof(Node *));
-    check_initialization(unique_ngrams_array, "Failed to allocate unique_ngrams_array");
-    size_t node_array_index = 0;
-    for (int i=0; i < hashTable->buckets_size; ++i) {
-        Node *current = hashTable->buckets[i];
-        while (current) {
-            unique_ngrams_array[node_array_index++] = current;
-            current = current->next;
-        }
-    }
-    qsort(unique_ngrams_array, unique_ngrams, sizeof(Node *), compare_nodes);
-    // Print statistics
+    // sort top_ngrams and print statistics.
+    qsort(top_ngrams, filled, sizeof(Node *), compare_nodes);
     printf("Total unique n-grams: %zu\n", unique_ngrams);
+    printf("-----------------------\n");
     printf("Top %d n-grams:\n", TOP_K);
-    int limit = (unique_ngrams < TOP_K) ? (int)unique_ngrams : TOP_K;
-    for (int i=0; i < limit; ++i) {
-        printf("%d - '%s': %d\n", i+1, unique_ngrams_array[i]->gram, unique_ngrams_array[i]->counter);
+    for (int i = 0; i < filled; ++i) {
+        printf("%d - '%s': %d\n", i + 1, top_ngrams[i]->gram, top_ngrams[i]->counter);
     }
-    // free the memory
-    free(unique_ngrams_array);
 }
 
-void get_hashtable_statistics(HashTable *hashTable) {
-    //TODO
+void print_hashtable_statistics(HashTable *hashTable) {
+    check_ptr(hashTable, "print_hashtable_statistics received NULL hashTable");
+    // variables.
+    size_t total_elements = 0;
+    size_t busy_buckets = 0;
+    size_t max_chain_len = 0;
+    // traverse hashtable and collets statistics.
+    for (int i=0; i < hashTable->buckets_size; ++i) {
+        Node *current = hashTable->buckets[i];
+        if (current) {
+            busy_buckets++;
+            size_t current_chain_len = 0;
+            while (current) {
+                current_chain_len++;
+                current = current->next;
+            }
+            total_elements += current_chain_len;
+            if (current_chain_len > max_chain_len)
+                max_chain_len = current_chain_len;
+        }
+    }
+    // print statistics.
+    printf("Hash Table Statistics:\n");
+    printf("-Total buckets: %d\n", hashTable->buckets_size);
+    printf("-Busy buckets: %zu\n", busy_buckets);
+    printf("-Total elements: %zu\n", total_elements);
+    printf("-Max chain length: %zu\n", max_chain_len);
+    printf("-Avg chain length: %.2f\n",  busy_buckets>0 ? ((double)total_elements / busy_buckets) : 0.0);
+    printf("-Load Factor (elements/buckets): %.4f\n", (double)total_elements / hashTable->buckets_size);
+    printf("-Fill Factor (busy/total): %.4f\n", (double)busy_buckets / hashTable->buckets_size);
 }

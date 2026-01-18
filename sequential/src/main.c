@@ -21,15 +21,16 @@ int main() {
     while ((gram = next_ngram(src)) != NULL) {
         printf("%s\n", gram);
         add_gram(hashTable, gram);
+        free(gram);
         for(int i=0; i<STRIDE; i++)
             fscanf(src, "%255s", temp_buffer);
     }
     fclose(src);
 
     // visualize statistics
-    printf("Printing the results...\n");
-    get_text_statistics(hashTable);
-    get_hashtable_statistics(hashTable);
+    print_text_statistics(hashTable);
+    printf("-----------------------\n");
+    print_hashtable_statistics(hashTable);
 
     // close
     free_hash_table(hashTable);

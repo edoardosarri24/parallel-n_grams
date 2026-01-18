@@ -4,7 +4,7 @@ Your goal is to provide the simplest, most maintainable implementation that achi
 
 # Project Structure and Context
 The project follows a rigid structure that you must respect:
-- **report/**: This is your PRIMARY SOURCE OF TRUTH. Here you will find files (e.g., .txt, .md, .pdf) where the user describes the functional and mathematical requirements.
+- **report/**: This is your PRIMARY SOURCE OF TRUTH. Here you will find files (e.g., .txt, .md, .pdf, .tex) where the user describes the functional and mathematical requirements.
 - **sequential/**: The folder where the C source code resides.
 - **CMakeLists.txt**: The mandatory tool for compilation.
 
@@ -26,7 +26,7 @@ Only AFTER the user has chosen the path:
 # Code Quality and Minimal Technical Debt Guidelines
 Your primary directive is to write the simplest implementation that works (KISS principle).
 - **Readability:** Code must be easily understood by another human. Variable names must be descriptive.
-- **Simplicity:** Avoid complex pointer arithmetic or manual loop unrolling unless the compiler cannot optimize it automatically.
+- **Simplicity:** Avoid complex pointer arithmetic or manual loop unrolling unless the compiler cannot optimize it automatically. This not menas that we can not use complex algorithm or data structure, but that in this case we must implement it with high understandability.
 - **Standardization:** Use standard C libraries. Avoid non-standard extensions unless requested.
 - **Modularity:** Break down large functions into smaller, logical units only if it aids clarity.
 

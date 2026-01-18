@@ -32,18 +32,59 @@ Now we see the main characteristics of this implementation:
 To extract the statistics described in Section~\ref{sec:statistics}, we implemented two function in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/master/sequential/src/statistics.c}{statistics.c}.
 
 \subsection{Text statistics}
-For the text statistics the algorithm follows the steps below:
+For the text statistics, we explored two different approaches.
+
+\subsubsection{Two steps approach}
+The algorithm followed these steps:
 \begin{enumerate}
-    \item Traverse the whole hash table statucture to count the total number of unique $n$-grams.
-    \item Allocate a temporary array of \texttt{Node} pointers of size $N$, where $N$ is the numbers of unique $n$-grams. This allocation was obtained using the malloc function: using the variable lenght array (i.e., specifing the dimension of the array) the array is allocated in the stack, that is faster but smaller; using the malloc function the array is allocated in the heap memory. When the dimension of the array is unknown or very large it's better to use the dinamic allocation to avoid stack overflow.
-    \item Populate the array with the nodes in the hash table.
-    \item Sort the array using the standard C library function \textit{qsort}, with a custom comparator that orders nodes by frequency in descending order.
+    \item Traverse the whole hash table structure to count the total number of unique $n$-grams ($N$).
+    \item Allocate a temporary array of \texttt{Node} pointers of size $N$. This allocation was obtained using the \texttt{malloc} function. Using a Variable Length Array (VLA) allocates memory on the stack, which is faster but limited in size. Using \texttt{malloc} allocates memory on the heap, which is necessary when $N$ is unknown or large to avoid stack overflow.
+    \item Populate the array with the nodes from the hash table.
+    \item Sort the entire array using the standard C library function \texttt{qsort}, with a custom comparator that orders nodes by frequency in descending order.
     \item Print the top $K$ elements from the sorted array and the count of unique $n$-grams.
     \item Free the allocated array.
 \end{enumerate}
 
+\subsubsection{Top-K approach}
+This is the algorithm that we implemented in our code.
+\begin{enumerate}
+    \item Allocate a small array \textit{top\_ngrams} of pointers of size $TOP\_K$, i.e., the number of top elements requested.
+    \item Iterate through the whole hash table only once. For each unique $n$-gram:
+    \begin{enumerate}
+        \item Increment the counter of unique $n$-grams.
+        \item If the \texttt{top\_ngrams} array is not yet full, add the current $n$-gram to it.
+        \item If the array is full, find the element within \texttt{top\_ngrams} that has the minimum frequency.
+        \item Compare the current $n$-gram's frequency with this minimum. If the current $n$-gram is more frequent, it replaces the minimum element in the array.
+    \end{enumerate}
+    \item Finally, sort the \texttt{top\_ngrams} array in descending order and print the results.
+\end{enumerate}
+
+\subsubsection{Complexity Analysis}
+Let $N$ be the number of unique $n$-grams and $K$ be the number of top elements to find.
+
+\begin{itemize}
+    \item \textbf{Time Complexity} \\
+        In the first approach the bottleneck is the sorting step, which takes $O(N\log N)$. In our implementation we pass through the hash table only once, so we have $O(N)$; for each $n$-gram we pass over $K$ elements, so in total we have $O(N \cdot K)$. Since is usually very small, the total time complexity is $O(N)$.
+    \item \textbf{Space Complexity} \\
+        The first approach requires $O(N)$ extra space for the temporary array. The seond approach requires only $O(K)$ that is irrilevant for small $K$.
+\end{itemize}
+
 \subsection{Hash table performance}
 For the hash table performance the pipeline is the following:
 \begin{enumerate}
-    \item TODO
+    \item Initialize counters, \textit{total\_elements}, \textit{busy\_buckets}, and \textit{max\_chain\_len}, to 0.
+    \item Iterate through the whole \textit{buckets} array of the hash table.
+    \item For each bucket:
+    \begin{enumerate}
+        \item If the bucket is not empty increment \textit{busy\_buckets}.
+        \item Traverse the open chain of bucket to count the nodes.
+        \item Update \textit{max\_chain\_len} if the current chain length is greater than the current maximum.
+        \item Add the chain length to \texttt{total\_elements}.
+    \end{enumerate}
+    \item Print the results.
 \end{enumerate}
+
+\subsubsection{Complexity Analysis}
+The time complexity is $O(M+N)$, where $M$ is the number of buckets and $N$ is the total number of unique $n$-grams: we visit every bucket and every node exactly once.
+
+The space complexity is $O(1)$: we only use a few variables for counting.

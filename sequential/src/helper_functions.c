@@ -42,8 +42,10 @@ char *next_ngram(FILE *src) {
     long start_position = ftell(src);
     // save the words of the next ngram.
     for (int i=0; i<N_GRAM_SIZE; i++) {
-        if (fscanf(src, "%255s", words[i]) != 1)
+        if (fscanf(src, "%255s", words[i]) != 1) {
+            free(ngram);
             return NULL;
+        }
     }
     // compose the next ngrams.
     int offset = 0;
