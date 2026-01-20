@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <stdbool.h>
 #include <ctype.h>
 #include "helper_functions.h"
 #include "my_utils.h"
@@ -44,13 +43,14 @@ char *next_ngram(FILE *src) {
     for (int i=0; i<N_GRAM_SIZE; i++) {
         if (fscanf(src, "%255s", words[i]) != 1) {
             free(ngram);
-            return NULL;
+            return nullptr;
         }
     }
     // compose the next ngrams.
     int offset = 0;
+    size_t max_len = N_GRAM_SIZE * 256;
     for (int i = 0; i < N_GRAM_SIZE; i++) {
-        offset += sprintf(ngram + offset, "%s%s", words[i], (i == N_GRAM_SIZE - 1) ? "" : " ");
+        offset += snprintf(ngram + offset, max_len - offset, "%s%s", words[i], (i == N_GRAM_SIZE - 1) ? "" : " ");
     }
     // come back to the original file poitner position.
     fseek(src, start_position, SEEK_SET);

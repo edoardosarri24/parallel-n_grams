@@ -21,10 +21,10 @@ static int find_element_with_min_frequency(Node **top_ngrams) {
 }
 
 void print_text_statistics(HashTable *hashTable) {
-    check_ptr(hashTable, "print_text_statistics in statistics.c received NULL hashTable");
+    check_ptr(hashTable, "print_text_statistics in statistics.c received nullptr hashTable");
     // variables.
     size_t unique_ngrams = 0;
-    Node *top_ngrams[TOP_K] = {NULL};
+    Node *top_ngrams[TOP_K] = {nullptr};
     int filled = 0;
     // Travers the hashtable: increment the counter and fnd top k ngrams.
     for (int i=0; i < hashTable->buckets_size; ++i) {
@@ -61,7 +61,7 @@ void print_text_statistics(HashTable *hashTable) {
 }
 
 void print_hashtable_statistics(HashTable *hashTable) {
-    check_ptr(hashTable, "print_hashtable_statistics received NULL hashTable");
+    check_ptr(hashTable, "print_hashtable_statistics received nullptr hashTable");
     // variables.
     size_t total_elements = 0;
     size_t busy_buckets = 0;

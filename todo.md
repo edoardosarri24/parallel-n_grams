@@ -1,5 +1,5 @@
 # todo
-- memoria troppo frammentata con malloc quando si agigunge un nodo?
-- refactoring appunti C
+- profiling
 - ci sono migliorarmenti a livello di prestazioni con molte malloc e molte fseek e system call
-- impementare le statistiche sulle performance della hash table.
+- memoria troppo frammentata con malloc quando si agigunge un nodo?
+- tempi di esecuzione

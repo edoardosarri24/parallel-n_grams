@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <omp.h>
 #include "hash_table.h"
 #include "helper_functions.h"
 #include "statistics.h"
@@ -7,6 +8,9 @@
 #define HASH_TABLE_DIMENSION 150000
 
 int main() {
+    // time measurement
+    double start_time = omp_get_wtime();
+
     // pre-processing
     printf("Pre-processing the input file...\n");
     preprocess_file();
@@ -18,8 +22,7 @@ int main() {
     HashTable *hashTable = create_hash_table(HASH_TABLE_DIMENSION);
     char *gram;
     char temp_buffer[256];
-    while ((gram = next_ngram(src)) != NULL) {
-        printf("%s\n", gram);
+    while ((gram = next_ngram(src)) != nullptr) {
         add_gram(hashTable, gram);
         free(gram);
         for(int i=0; i<STRIDE; i++)
@@ -34,5 +37,10 @@ int main() {
 
     // close
     free_hash_table(hashTable);
+
+    // time measurement end
+    double end_time = omp_get_wtime();
+    printf("Total execution time: %f seconds\n", end_time - start_time);
+
     return EXIT_SUCCESS;
 }

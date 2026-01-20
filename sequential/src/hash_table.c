@@ -49,7 +49,7 @@ void add_gram(HashTable *table, const char *gram) {
 }
 
 void free_hash_table(HashTable *table) {
-    check_ptr(table, "Hash table pointer is NULL");
+    check_ptr(table, "Hash table pointer is nullptr");
     for (int i=0; i < table->buckets_size; i++) {
         Node *current_node = table->buckets[i];
         while (current_node) {

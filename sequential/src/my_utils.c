@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "my_utils.h"
 
-// Checks if a pointer is NULL (memory allocation error).
+// Checks if a pointer is nullptr (memory allocation error).
 void check_initialization(void *ptr, const char *msg) {
     if (!ptr) {
         perror(msg);
@@ -18,7 +18,7 @@ void check_initialization_eventually_free(void *ptr, void *to_free, const char *
     }
 }
 
-// Checks if a pointer is NULL (logical error).
+// Checks if a pointer is nullptr (logical error).
 void check_ptr(void *ptr, const char *msg) {
     if (!ptr) {
         fprintf(stderr, "Error: %s\n", msg);
