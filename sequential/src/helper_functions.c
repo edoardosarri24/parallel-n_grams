@@ -2,6 +2,9 @@
 #include <ctype.h>
 #include "helper_functions.h"
 #include "my_utils.h"
+#include "hash_table.h"
+
+#define HASH_TABLE_DIMENSION 10000019
 
 void preprocess_file(const char *input_filepath, const char *output_filepath) {
     // open source and destination.
@@ -31,7 +34,7 @@ void preprocess_file(const char *input_filepath, const char *output_filepath) {
     fclose(src);
 }
 
-char *next_ngram(FILE *src) {
+static char *next_ngram(FILE *src) {
     // variables.
     char words[N_GRAM_SIZE][256];
     char *ngram = (char *)malloc(N_GRAM_SIZE * 256 * sizeof(char));
@@ -53,4 +56,20 @@ char *next_ngram(FILE *src) {
     // come back to the original file poitner position.
     fseek(src, start_position, SEEK_SET);
     return ngram;
+}
+
+HashTable* populate_hashtable(const char *filename) {
+    FILE *src = fopen(filename, "r");
+    check_initialization(src, "Error opening input normalized file");
+    HashTable *hashTable = create_hash_table(HASH_TABLE_DIMENSION);
+    char *gram;
+    char temp_buffer[256];
+    while ((gram = next_ngram(src)) != nullptr) {
+        add_gram(hashTable, gram);
+        free(gram);
+        for(int i=0; i<STRIDE; i++)
+            fscanf(src, "%255s", temp_buffer);
+    }
+    fclose(src);
+    return hashTable;
 }

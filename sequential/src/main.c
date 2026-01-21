@@ -5,24 +5,6 @@
 #include "statistics.h"
 #include "my_utils.h"
 
-#define HASH_TABLE_DIMENSION 10000019
-
-static HashTable* populate_hashtable(const char *filename) {
-    FILE *src = fopen(filename, "r");
-    check_initialization(src, "Error opening input normalized file");
-    HashTable *hashTable = create_hash_table(HASH_TABLE_DIMENSION);
-    char *gram;
-    char temp_buffer[256];
-    while ((gram = next_ngram(src)) != nullptr) {
-        add_gram(hashTable, gram);
-        free(gram);
-        for(int i=0; i<STRIDE; i++)
-            fscanf(src, "%255s", temp_buffer);
-    }
-    fclose(src);
-    return hashTable;
-}
-
 int main() {
     // time measurement start
     double start_time = omp_get_wtime();

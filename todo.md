@@ -1,2 +1,5 @@
 # todo
-- miglioramenti come meno I/O
+- Documentare meglio cosa fanno gli script
+- Implementazione efficiente
+- riscrivi documentazione
+- docuemntare meglio la dimensione della tabella
