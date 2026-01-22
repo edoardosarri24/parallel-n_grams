@@ -104,7 +104,8 @@ HashTable* populate_hashtable(const char *input_data, size_t input_size) {
         }
         *dest = '\0';
         //handle the current n-gram.
-        add_gram(hashTable, current_ngram_string);
+        size_t ngram_len = dest - current_ngram_string;
+        add_gram(hashTable, current_ngram_string, ngram_len);
         // the head becomes the next word.
         head = (head+1) % N_GRAM_SIZE;
     }

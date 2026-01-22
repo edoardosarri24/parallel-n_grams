@@ -48,7 +48,6 @@ endif()
 
 # hyperparameters
 set(N_GRAM_SIZE 6 CACHE STRING "Size of the n-gram")
-set(STRIDE 1 CACHE STRING "Stride for the sliding window")
 set(TOP_K 11 CACHE STRING "Number of top n-grams to display")
 
 # projects

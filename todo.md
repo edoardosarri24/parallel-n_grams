@@ -1,4 +1,9 @@
 # todo
+- rinominare P in hash_table.c
 - Isolamento di ogni componente nel percorso di analisi del kgram. in pratica voglio vedere se il codice è lineare o può essere semplificato.
-- Gestisci molte malloc in addgram
-    - E se invece usare liste con incatenate usassi Vettori prediligendo le collisioni? avere quindi tante collisioni però una località spaziale che mi permette di scorrere sulla lista in modo veloce
+- capire:
+    Alignment (Bitwise Magic):
+        size = (size + alignment - 1) & ~(alignment - 1);
+        Arrotonda la dimensione richiesta al multiplo superiore di 8 byte (su 64-bit).
+        * Esempio: Se chiedi 13 byte -> diventa 16. Se chiedi 2 -> diventa 8.
+        * Questo è cruciale per evitare "bus error" o rallentamenti hardware quando si accede a interi/puntatori non allineati in memoria.
