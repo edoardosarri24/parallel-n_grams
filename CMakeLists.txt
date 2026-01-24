@@ -52,3 +52,4 @@ set(TOP_K 11 CACHE STRING "Number of top n-grams to display")
 
 # projects
 add_subdirectory(sequential)
+add_subdirectory(parallel)

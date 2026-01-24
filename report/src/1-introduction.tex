@@ -12,7 +12,9 @@ Obviously the main goal is two count the $n$-gram. Others features are:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Input and normalization}
 \label{sec:normalizzation}
-The code working, for semplifing the implementation, only with english sentences. The input file for our analysis was taken from \href{https://wortschatz.uni-leipzig.de/en/download/eng}{Wortschatz Leipzig project}, that contains a big corpus of english text.
+The code working well, for semplifing the implementation, only with english sentences. This allow us to threat a characters as a single byte.
+
+We use a test simple and small plain text file to understand the correctness of the program. This file came from the \href{https://wortschatz.uni-leipzig.de/en/download/eng}{Wortschatz Leipzig project}, that contains a big corpus of english text; in specific \href{https://downloads.wortschatz-leipzig.de/corpora/eng_news_2024_1M.tar.gz}{this link} is the direct download of the file. For the final test and for the analysis we take a plain text from \href{https://huggingface.co/datasets/allenai/c4/tree/main/en}{Hugging Face}; we download the file untill its dimension reach 1GB.
 
 \myskip
 
@@ -108,4 +110,7 @@ In our project we used the \href{https://developer.ridgerun.com/wiki/index.php/P
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Execution}
+The execution of the project requires two step: the download of test input or real imput (the one used for the analysis), simply executing \texttt{download\_test.sh} script or \texttt{download\_input.sh} script in \texttt{exec/} folder; the second spet is executing the script named \texttt{executing.sh}, always in the \texttt{exec/} folder. This last script execution execute the program on the file previusly downloaded intput text with all performance flag on. In the same folder there are also others script for the execution with profiling (different type) or with the sanitizers or in debug mode.
+
+
 To execute the project you have to execute one of the shell script in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/master/exec}{exec folder}. The \textit{download\_data.sh} is an helper script that is used in the other.

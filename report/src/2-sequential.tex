@@ -29,15 +29,9 @@ The \href{https://github.com/edoardosarri24/parallel-trigrams/blob/cf8e82b27f908
 In the Section~\ref{sec:overflow} we said that we must using almost a 32bits variable to avoid the overflow of intermediate value during the index calculation. To obtain this goal we have used the \textit{uint\_fast32\_t} C type that garantee the faster type that have almost 32bits.
 
 \subsection{Memory Arena}
-In a base implementation we made a \texttt{malloc} operation every $k$-gram added in the hash table. To avoid the overhead of the memory allocation, also in the way to optimize the code for the furure parallel implemention (\texttt{malloc} implies a unique system lock), we implemented a Memory Arena allocator. The arena works by pre-allocating a block of contiguous memory (16MB by default) and use it for each new $k$-gram insertion.
+In a base implementation we made a \texttt{malloc} operation every $k$-gram added in the hash table. The malloc, while allocate the request portion of memory, allocate also its part for metadata (e.g., dimension of the allocation and the state of the block); this is a big memory overhead if we use frequent and small call to \texttt{{malloc}}. To avoid the overhead of the memory allocation, also in the way to optimize the code for the furure parallel implemention (\texttt{malloc} implies a unique system lock), we implemented a Memory Arena allocator. The arena works by pre-allocating a block of contiguous memory (16MB by default) and use it for each new $k$-gram insertion.
 
 This approach allow us to reduce the numbers of \texttt{malloc} operation: we make one of this only when the current block is all busy. Another advantage is that in this way we reduce the fragmentation of the mempory and improve chache localy. The localy doen't improve during the scansion of the linked list: the node in a list aren't added in a sequential manner.
-
-\myskip
-
-After a quantitative evaluation of the execution time of the whole program, the implementation of the arena allocation bring us from circa 18sec to 10sec on the same input file.
-
-After a profiling analysis we saw that now the main time is spend in the add $k$-gram operation, while after the arena allocation it was spent in I/O operation.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Statistics}

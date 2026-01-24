@@ -1,12 +1,34 @@
 #!/bin/bash
 
-./exec/download_data.sh
+if [ -z "$1" ]; then
+    echo "Error: Missing argument. Usage: $0 [seq|par]"
+    exit 1
+fi
+
+MODE=$1
+PPROF_PATH="/Users/edoardosarri/.asdf/installs/golang/1.25.6/bin/pprof"
+
+if [[ "$MODE" != "seq" && "$MODE" != "par" ]]; then
+    echo "Error: Invalid argument '$MODE'. Usage: $0 [seq|par]"
+    exit 1
+fi
+
 echo "building..."
 rm -rf build
 cmake -S . -B build -DENABLE_AUBSAN=OFF -DENABLE_PROFILING=ON -DENABLE_MSAN=OFF
 cmake --build build
-echo "executing..."
-CPUPROFILE=whole.prof ./build/sequential/sequential_trigrams
-/Users/edoardosarri/.asdf/installs/golang/1.25.6/bin/pprof -top ./build/sequential/sequential_trigrams whole.prof > sequential/result_profiling/profile.txt
-/Users/edoardosarri/.asdf/installs/golang/1.25.6/bin/pprof -pdf ./build/sequential/sequential_trigrams whole.prof > sequential/result_profiling/profile.pdf
+
+echo "executing ($MODE)..."
+if [ "$MODE" == "par" ]; then
+    TARGET="./build/parallel/parallel_trigrams"
+    OUT_DIR="parallel/result_profiling"
+else
+    TARGET="./build/sequential/sequential_trigrams"
+    OUT_DIR="sequential/result_profiling"
+fi
+
+mkdir -p "$OUT_DIR"
+CPUPROFILE=whole.prof "$TARGET"
+"$PPROF_PATH" -top "$TARGET" whole.prof > "$OUT_DIR/profile.txt"
+"$PPROF_PATH" -pdf "$TARGET" whole.prof > "$OUT_DIR/profile.pdf"
 rm whole.prof

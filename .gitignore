@@ -1,6 +1,6 @@
 report/build/
 .vscode/
 build/
-sequential/data/input.txt
-sequential/result_profiling/profile.pdf
-sequential/result_profiling/profile.txt
+data/
+sequential/result_profiling/
+sequential/result_profiling/
