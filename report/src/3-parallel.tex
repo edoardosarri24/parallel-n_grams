@@ -1,3 +1,51 @@
 \chapter{Parallel}
 \label{cap:parallel}
-In this chapter we present the main aspect of the parallel implementation to count the 3-grams in an input.
+In this chapter we present the main aspect of the parallel implementation to count the 3-grams in an input. In particular we describe the approach used to transform the sequential execution in the parallel one. OpenMP is the framework used.
+
+The repository of the project is the same, and \href{https://github.com/edoardosarri24/parallel-trigrams/blob/ef94c1127b974ed4241ad355c5d9b218b3484e1f/parallel}{this} is the corresponding folder for the parallel version.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Implementation Design Analysis}
+In this section we describe the idea that was used in the parallel implementation. We will treat the pipeline of the program in the Section \ref{sec:par_pipeline}.
+
+There are two choices to solve the problem of frequency count. We adopt the first one.
+\begin{itemize}
+    \item \textbf{Map-reduce} \\
+    With this pattern we allocate a private hash table for each thread. We make $n$ partition of the input file (where $n$ is the number of threads) and each thread treats his partition locally. When all threads have populated their hash table, we make a partition of the buckets, and each thread is responsible of merging its partition in a global hash table. This approach is reasonable because the hash is a deterministic function, and the hash of a given $k$-gram is the same for each thread. \\
+    In this way no lock is necessary and there is no contention. The program can scale up when the input dimension grow; we have only the limit of the RAM dimension.
+    \item \textbf{Shared hash table} \\
+    All threads write in a global hash table. The contention on the structure is guaranteed from an array of locks, each of them locking a partition of the table: if a thread wants to write in the chain of a block it must acquire the related lock.
+    If we have a limited and small memory this is probably the best solution. We have a lock overhead and a possible false sharing if more threads treat the same $k$-gram frequently.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Implementing choice}
+In the sequential version we have a hash table with 10000019 buckets. We have evaluated also the reduction of the local hash table dimension of a $\tfrac{1}{T}$ factor. This is a good idea if the memory is a problem, because it reduces the dimension of the table of the single thread, and this makes sense because each thread works only on a partition of the whole input file; in total we have circa $76 \times T$ MB allocated for the hash table, where $T$ is the number of threads. The contra of this approach is that during the merge phase we have to handle concurrent writes on the global hash table; using the same dimension for the local and global hash table allows us to avoid the concurrent write on the global structure, as we can map local buckets to global buckets 1:1 without collisions between merging threads.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Pipeline}
+\label{sec:par_pipeline}
+The pipeline of the map-reduce approach implementation is compose of three step: initialization of the variable, population (Map) of the local hash table, and merge (Reduce) the local hash table in the global one. The code of this part is mainly in the \texttt{populate\_hashtable} function in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/ef94c1127b974ed4241ad355c5d9b218b3484e1f/parallel/src/main_functions.c}{main\_functions.c} file.
+
+\subsection{Initialization}
+Before entering the parallel region, the main thread allocates the following resources:
+\begin{itemize}
+    \item \textbf{Global Table}: The final hash table is allocated but remains empty.
+    \item \textbf{Local Tables Array}: We allocate an array of pointers to HashTable struct of size \texttt{omp\_get\_max\_threads()}. This function return the numbers of thread that openMP will allocated in a parallel region; if you use the classic function like \texttt{omp\_get\_num\_threads()} out of parallel region, the function returns 1.
+\end{itemize}
+
+\subsection{Populate (Map)}
+This phase is executed in parallel region, where each thread populates its own private local hash table. Like we saw above, this garantee no race condition and allow the maximum valocity with the scaling of the input file.
+\begin{enumerate}
+    \item \textbf{Chunking}: The input file size is divided by $N$ to calculate the \texttt{chunk\_size}, where $N$ is the number of threads. In this way each thread is assigned to a theoretical range $[start, end)$.
+    \item \textbf{Alignment}: Since a mathematical division can land in the middle of a word, we apply an alignment correction. If a thread detects that the character immediately preceding its \texttt{start} pointer is alphanumeric, it means the previous word was cut. The thread advances its \texttt{start} pointer until the beginning of the next valid word. This was done for each threat but not for the main thead, because its start is already set and it can start immediatly the computation.
+    \item \textbf{Boundaries}: To handle $n$-grams crossing chunk boundaries, we define the ownership of a $n$-gram by the start of this $n$-gram: the $n$-gram is in the thread $i$ zone if its first word is in the thread $i$ zone.
+    \item \textbf{Buffer}: Before the main loop, we fill a circular buffer with $N_{gram}-1$ words like in the sequential version.
+\end{enumerate}
+
+\subsection{Merge (Reduce)}
+This pahse begin woth a barrir: after this point all thread have populated its own local hash table and the thread can start to merge the local hash table in the global one.
+\begin{itemize}
+    \item \textbf{Bucket-Parallelism}: Instead of parallelizing over threads (which would require locking the global table), we parallelize over the bucket indices of the hash table. This means that each thread is assigned to a partition of the global table and of each local table: no lock or mutex are required beause only one thread work on the cell $i$ of each table (local and global).
+    \item \textbf{Dynamic Scheduling}: We use a dinamyc assignament of the partiotion to the thread due to the sparsity of the hash table. In this way if a thread finish earlier respect the others, all cores remains busy.
+\end{itemize}

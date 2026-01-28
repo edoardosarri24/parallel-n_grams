@@ -8,10 +8,13 @@ typedef struct Arena Arena;
 // creates a new memory arena.
 Arena *create_arena(size_t default_block_size);
 
-// allocates memory from the arena and returns a pointer to the allocated memory.
+// allocations.
 void *arena_alloc(Arena *arena, size_t requested_size);
 
 // Frees all memory associated with the arena.
 void arena_free(Arena *arena);
+
+// Returns the total memory usage of the arena in bytes.
+size_t arena_get_memory_usage(Arena *arena);
 
 #endif // ARENA_H

@@ -6,22 +6,27 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <omp.h>
 #include "main_functions.h"
 #include "hash_table.h"
+#include "my_utils.h"
 
 #define HASH_TABLE_DIMENSION 10000019
 #define MAX_WORD_LEN 256
 
-static bool get_next_word(const char **data_cursor, const char *data_end, char *next_word, size_t *word_len) {
-    const char *current_data_cursor = *data_cursor; // double pointer allows updating the caller's cursor
+// Modified to return the start position of the word found
+static bool get_next_word(const char **data_cursor, const char *data_end, char *next_word, size_t *word_len, const char **word_start_out) {
+    const char *current_data_cursor = *data_cursor;
     // skip non-alphanumeric characters. This bring us at the start of the next word.
     while (current_data_cursor < data_end && !isalnum((unsigned char)*current_data_cursor))
         current_data_cursor++;
-    // EOF check.
+    // EOF check
     if (current_data_cursor >= data_end) {
         *data_cursor = current_data_cursor;
         return false;
     }
+    // determine word start. Usefull for the paralell part
+    if (word_start_out) *word_start_out = current_data_cursor;
     // read the next word.
     size_t i = 0;
     while (current_data_cursor < data_end && isalnum((unsigned char)*current_data_cursor)) {
@@ -30,14 +35,13 @@ static bool get_next_word(const char **data_cursor, const char *data_end, char *
         current_data_cursor++;
     }
     next_word[i] = '\0';
-    if (word_len) *word_len = i; // return also the length of the word.
     // return.
+    if (word_len) *word_len = i; // return also the length of the word.
     *data_cursor = current_data_cursor;
     return true;
 }
 
 const char* map_file(const char *input_filepath, size_t *input_size) {
-    // open file
     int fd = open(input_filepath, O_RDONLY);
     if (fd == -1) {
         perror("Error opening input file");
@@ -49,66 +53,117 @@ const char* map_file(const char *input_filepath, size_t *input_size) {
         close(fd);
         exit(EXIT_FAILURE);
     }
-    // check the file size
     *input_size = sb.st_size;
     if (sb.st_size == 0) {
         close(fd);
-        return nullptr;
+        return NULL;
     }
-    // mapping the file.
     const char *input_data = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (input_data == MAP_FAILED) {
         perror("Error mapping file");
         close(fd);
         exit(EXIT_FAILURE);
     }
-    // the data will be accessed sequentially. It is an optimization for the kernel.
     if (madvise((void *)input_data, sb.st_size, MADV_SEQUENTIAL) == -1)
         perror("Warning: madvise failed");
-    // return
     close(fd);
     return input_data;
 }
 
 HashTable* populate_hashtable(const char *start, const char *end) {
-    // initializing hash table if the input file is ok.
-    HashTable *hashTable = create_hash_table(HASH_TABLE_DIMENSION);
-    if (start == nullptr || end == nullptr || start >= end)
-        return hashTable;
-    // variables.
-    char words[N_GRAM_SIZE][MAX_WORD_LEN]; // circular buffer of the n-gram.
-    size_t lengths[N_GRAM_SIZE]; // circular buffer for word lengths.
-    const char *data_cursor = start;
-    const char *data_end = end;
-    // fill the N_GRAM_SIZE-1 initial words in the circular buffer.
-    for (int i=0; i<N_GRAM_SIZE-1; i++) {
-        // if there aren't N_GRAM_SIZE word in the input file, return an empty hash table.
-        if (!get_next_word(&data_cursor, data_end, words[i], &lengths[i])) // passing the address we can update the cursor
-            return hashTable;
-    }
-    // process the input file word by word.
-    int head = 0; // points to the start of current n-gram.
-    char current_ngram_string[N_GRAM_SIZE * MAX_WORD_LEN]; // the start of the new k-gram.
-    while (get_next_word(&data_cursor, data_end, words[(head + N_GRAM_SIZE-1) % N_GRAM_SIZE], &lengths[(head + N_GRAM_SIZE-1) % N_GRAM_SIZE])) {
-        // Construct the n-gram string from the current window
-        char *dest = current_ngram_string; // mobile cursor of the new k-gram.
-        for (int i=0; i<N_GRAM_SIZE; i++) {
-            int idx = (head + i) % N_GRAM_SIZE;
-            size_t len = lengths[idx];
-            memcpy(dest, words[idx], len);
-            dest += len;
-            if (i < N_GRAM_SIZE - 1) {
-                *dest = ' ';
-                dest++;
+    // initializing hash table and continue if the input file is ok.
+    HashTable *global_table = create_hash_table(HASH_TABLE_DIMENSION);
+    if (start == NULL || end == NULL || start >= end)
+        return global_table;
+    // allocation of local table accessible out of threads.
+    int max_threads = omp_get_max_threads(); // avoid segmentation falut on the local hashtable.
+    HashTable **local_tables = (HashTable **)calloc(max_threads, sizeof(HashTable*));
+    check_initialization(local_tables, "Failed to allocate local_tables array");
+    #pragma omp parallel
+    {
+        // chunking and threads bounds.
+        int tid = omp_get_thread_num();
+        int n_threads = omp_get_num_threads();
+        size_t total_len = end - start;
+        size_t chunk_size = total_len / n_threads;
+        // calculate the thread bounds.
+        const char *my_start = start + tid * chunk_size;
+        const char *my_end = (tid == n_threads - 1) ? end : start + (tid + 1) * chunk_size;
+        if (tid > 0) { // the main thread is already allign with the correct (first) word.
+            // If the character before my_start is alphanumeric, we are inside a word or at its end.
+            if (my_start > start && isalnum((unsigned char)*(my_start - 1))) { // if the first character isn't the first character...
+                while (my_start < end && isalnum((unsigned char)*my_start)) // skip at the start of the next word.
+                    my_start++;
             }
         }
-        *dest = '\0';
-        //handle the current n-gram.
-        size_t ngram_len = dest - current_ngram_string;
-        add_gram(hashTable, current_ngram_string, ngram_len);
-        // the head becomes the next word.
-        head = (head+1) % N_GRAM_SIZE;
+        // initialize local hash table.
+        HashTable *my_table = create_hash_table(HASH_TABLE_DIMENSION);
+        local_tables[tid] = my_table;
+        // variables.
+        char words[N_GRAM_SIZE][MAX_WORD_LEN];
+        size_t lengths[N_GRAM_SIZE];
+        const char *word_starts[N_GRAM_SIZE]; // Circular buffer for word start positions
+        const char *data_cursor = my_start;
+        // fill the N_GRAM_SIZE-1 initial words in the circular buffer.
+        bool enough_words = true; // usefull for undestand if the the merge part is to do.
+        for (int i=0; i < N_GRAM_SIZE-1; i++) {
+            if (!get_next_word(&data_cursor, end, words[i], &lengths[i], &word_starts[i])) {
+                enough_words = false;
+                break;
+            }
+            // a k-gram is in my zone if its first word in my zone.
+            if (i==0 && tid != n_threads-1 && word_starts[0] >= my_end) { // the last thread can not enter in the other thread zone.
+                enough_words = false;
+                break;
+            }
+        }
+        // process the input file word by word if the initial buffer is ok.
+        if (enough_words) { //pensare a come levarlo.
+            int head = 0;
+            char current_ngram_string[N_GRAM_SIZE * MAX_WORD_LEN];  // the start of the new k-gram.
+            // main loop.
+            while (get_next_word(&data_cursor, end, words[(head + N_GRAM_SIZE - 1) % N_GRAM_SIZE],
+                    &lengths[(head + N_GRAM_SIZE - 1) % N_GRAM_SIZE],
+                    &word_starts[(head + N_GRAM_SIZE - 1) % N_GRAM_SIZE])) {
+                //check if the current k-gram belongs to this thread, i.e., if the the first word is within [my_start, my_end).
+                if (tid != n_threads - 1 && word_starts[head] >= my_end)
+                    break;
+
+                // construct the n-gram string from the current window.
+                char *dest = current_ngram_string;
+                for (int i = 0; i < N_GRAM_SIZE; i++) {
+                    int idx = (head + i) % N_GRAM_SIZE;
+                    size_t len = lengths[idx];
+                    memcpy(dest, words[idx], len);
+                    dest += len;
+                    if (i < N_GRAM_SIZE-1) {
+                        *dest = ' ';
+                        dest++;
+                    }
+                }
+                *dest = '\0';
+                // handle the current n-gram.
+                size_t ngram_len = dest - current_ngram_string;
+                add_gram(my_table, current_ngram_string, ngram_len);
+                head = (head + 1) % N_GRAM_SIZE;
+            }
+        }
+        #pragma omp barrier // wait the population of all local hastable.
+        // merge phase.
+        #pragma omp for schedule(dynamic) // hadle the sparty of the hash table.
+        for (int i = 0; i < HASH_TABLE_DIMENSION; i++) {
+            for (int t = 0; t < n_threads; t++) {
+                Node *node = local_tables[t]->buckets[i];
+                while (node) {
+                    add_gram_to_bucket(global_table, i, node->gram, node->counter);
+                    node = node->next;
+                }
+            }
+        }
+        // free local table
+        free_hash_table(my_table);
     }
-    // return
-    return hashTable;
+
+    free(local_tables);
+    return global_table;
 }

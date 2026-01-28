@@ -1,83 +1,85 @@
 \chapter{Introduction}
-The main goal of this project is to count the $n$-gram (the occurencies of $n$ consecutive word) present in an input file. This will be addressed with two approaches: with the sequential implementation in Chapter~\ref{cap:sequential} and with the parallel implementation in Chapter~\ref{cap:parallel}. After these tow implementations we will evaluate the performance in Chapter~\ref{cap:analysis}, with particular focus on the speed-up.
+The main goal of this project is to count the $n$-grams (the occurrences of $n$ consecutive words) present in an input file. This will be addressed with two approaches: with the sequential implementation in Chapter~\ref{cap:sequential} and with the parallel implementation in Chapter~\ref{cap:parallel}. After these two implementations we will evaluate the performance in Chapter~\ref{cap:analysis}, with particular focus on the speed-up.
+
+This is the \href{https://github.com/edoardosarri24/parallel-trigrams}{repository} of the project.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Features}
-Obviously the main goal is two count the $n$-gram. Others features are:
+Obviously the main goal is to count the $n$-grams. Other features are:
 \begin{itemize}
     \item We can define the $n$ value (of the $n$-gram) at compilation time passing the parameter $N\_GRAM\_SIZE$. By default is $N\_GRAM\_SIZE=3$.
-    \item At the end of computation, the system print some statistics (see Section~\ref{sec:statistics}) abount the text and abount the hash table performance.
+    \item At the end of computation, the system prints some statistics (see Section~\ref{sec:statistics}) about the text and about the hash table performance.
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Input and normalization}
 \label{sec:normalizzation}
-The code working well, for semplifing the implementation, only with english sentences. This allow us to threat a characters as a single byte.
+The code works well, for simplifying the implementation, only with English sentences. This allows us to treat a character as a single byte.
 
-We use a test simple and small plain text file to understand the correctness of the program. This file came from the \href{https://wortschatz.uni-leipzig.de/en/download/eng}{Wortschatz Leipzig project}, that contains a big corpus of english text; in specific \href{https://downloads.wortschatz-leipzig.de/corpora/eng_news_2024_1M.tar.gz}{this link} is the direct download of the file. For the final test and for the analysis we take a plain text from \href{https://huggingface.co/datasets/allenai/c4/tree/main/en}{Hugging Face}; we download the file untill its dimension reach 1GB.
+We use a simple and small plain text file to understand the correctness of the program. This file came from the \href{https://wortschatz.uni-leipzig.de/en/download/eng}{Wortschatz Leipzig project}, that contains a big corpus of English text; in specific \href{https://downloads.wortschatz-leipzig.de/corpora/eng_news_2024_1M.tar.gz}{this link} is the direct download of the file. For the final test and for the analysis we take a plain text from \href{https://huggingface.co/datasets/allenai/c4/tree/main/en}{Hugging Face}; we download the file until its dimension reaches 1GB.
 
 \myskip
 
-We want normalizing the input so that similar words will be rappresented by the same token, i.e., we want create equivalence classes that contain similar words. This help us to reduce the dimension of the word dictionary that composes the tringrams.
+We want to normalize the input so that similar words will be represented by the same token, i.e., we want to create equivalence classes that contain similar words. This helps us to reduce the dimension of the word dictionary that composes the trigrams.
 
 We addressed this in these ways:
 \begin{itemize}
     \item Bring all characters in lower case form.
     \item Remove all the punctuation like periods, commas and exclamation points.
-    \item We maintain only the numbers and the letterns.
+    \item We maintain only the numbers and the letters.
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Hash table}
 \label{sec:hash_table}
-We have to be able to count the trigrams; to address efficiently this goal we will use the hash-table structure. We have to define the hash function to obtain the index in the has table and the caratteristichs of the hash table.
+We have to be able to count the trigrams; to address efficiently this goal we will use the hash-table structure. We have to define the hash function to obtain the index in the hash table and the characteristics of the hash table.
 
 \subsection{Hash function}
 \label{sec:hash_function}
 In a hash table we must define the hash function to calculate the table index of the elements. We have to calculate the index of strings, so we adopt the \textbf{Polynomial Hash} technique~\cite{polinomial_strings_hashing}: given the string $c=c_1\cdots c_n$, its hash value is defined by $$\displaystyle H(c)=\left(\sum_{i=1}^n c_i\cdot p^{n-i}\right) \mod M.$$
 
-This approch to obtain the hash value is inefficient and dangerous for the overflow. We can exploit the distributive property of the module operation: given $H(c_1\cdots c_i)$, we can obtain $H(c_1\cdots c_ic_{i+1})=(H(c_1\cdots c_i)\cdot p+c_{i+1})mod M$. This garantee, with the correct choice of $p$ and $M$ like the one below, the absence of overflow.
+This approach to obtain the hash value is inefficient and dangerous for the overflow. We can exploit the distributive property of the module operation: given $H(c_1\cdots c_i)$, we can obtain $H(c_1\cdots c_ic_{i+1})=(H(c_1\cdots c_i)\cdot p+c_{i+1}) \mod M$. This guarantees, with the correct choice of $p$ and $M$ like the one below, the absence of overflow.
 
 \subsection{Hash table characteristics}
 Considering what was said above, the hash table has these characteristics:
 \begin{itemize}
-    \item The dimension of the index vector corresponde to the $M$ value.
+    \item The dimension of the index vector corresponds to the $M$ value.
     \item We resolve the collisions with the open chain method: every position in the table is a pointer to the data that share the same hash value.
     \item Each node of the open chain is composed by the string (i.e., the $n$-gram) as key and the counter as value.
 \end{itemize}
 
 \subsection{Choice of hyperparameters}
-For the $M$ and $p$ value in generale there is a rule of thumb that says to pick both values as prime numbers with M as large as possible. Starting from this:
+For the $M$ and $p$ value in general there is a rule of thumb that says to pick both values as prime numbers with M as large as possible. Starting from this:
 \begin{itemize}
-    \item $p$: Must be grether than the dimension of the alphabet to reduce the probability of collisions. In the computing we analyse the corpus byte-by-byte, so if the $p$ value is larger thant 256 it will be fine. We took $p=257$, the first prime number after 256.
-    \item $M$: The choice of $M$ determ the fill factor of the hash table, that can be defined as $\alpha=\tfrac{busy\_buckets}{table\_dimension}$. We compute it empirically as $M=10000019$; this choice allow us to have a good fill factor (i.e., 0.75 circa) in a big corpus in order to have a good compromise between memory usage and speed.
+    \item $p$: Must be greater than the dimension of the alphabet to reduce the probability of collisions. In the computing we analyse the corpus byte-by-byte, so if the $p$ value is larger than 256 it will be fine. We took $p=257$, the first prime number after 256.
+    \item $M$: The choice of $M$ determines the fill factor of the hash table, that can be defined as $\alpha=\tfrac{busy\_buckets}{table\_dimension}$. We compute it empirically as $M=10000019$; this choice allows us to have a good fill factor (i.e., 0.75 circa) in a big corpus in order to have a good compromise between memory usage and speed.
 \end{itemize}
 
 \subsection{Overflow}
 \label{sec:overflow}
-Thanks to these choice and the calculation tric for the hash function, defined in Section~\ref{sec:normalizzation}, we are sure that we haven't overflow error if we store the intermediate result in 32 bits variable.
+Thanks to these choices and the calculation trick for the hash function, defined in Section~\ref{sec:normalizzation}, we are sure that we haven't overflow error if we store the intermediate result in 32 bits variable.
 
-In fact, suppose that $H_i$ can store in 32 bits we can prove that the intermediate variable used can be store in 32 bits: in the worst case we have that $intermediate\_var\_dim=(M-1)\cdot p+c_{max}<2^{32}$.
+In fact, suppose that $H_i$ can be stored in 32 bits we can prove that the intermediate variable used can be stored in 32 bits: in the worst case we have that $intermediate\_var\_dim=(M-1)\cdot p+c_{max}<2^{32}$.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Statistics}
 \label{sec:statistics}
-Once we have populated the hash table structure we have to print the statistics of our $n$-gram. In some case print the distribution (i.e., the PDF) of our dataset is usefull, but in this case this means print the frequency of all encountered word: for a big corpus this is not reccomended due to the high number of unique $n$-gram.
+Once we have populated the hash table structure we have to print the statistics of our $n$-gram. In some case printing the distribution (i.e., the PDF) of our dataset is useful, but in this case this means printing the frequency of all encountered word: for a big corpus this is not recommended due to the high number of unique $n$-grams.
 
 We have considered the below statistics:
 \begin{itemize}
     \item Text statistics \\
-        We cosidered the follow text statistics:
+        We considered the following text statistics:
         \begin{itemize}
-            \item The $K$ $n$-gram with the highest frequency (with their frequency). The parameter $K$ can be configured at compilation time with the parameter $TOP\_K$ (default $TOP\_K=10$).
-            \item The number of unique $n$-gram.
+            \item The $K$ $n$-grams with the highest frequency (with their frequency). The parameter $K$ can be configured at compilation time with the parameter $TOP\_K$ (default $TOP\_K=10$).
+            \item The number of unique $n$-grams.
         \end{itemize}
     \item Hash table performance \\
-        We considered the follow statistic to evaluate the hash table performance:
+        We considered the following statistics to evaluate the hash table performance:
         \begin{itemize}
             \item The mean and the max length of the list.
-            \item Load factor, i.e. the ratio between the total elements and the total buckets. This corresponde with the average langht of chain.
-            \item Fill factor, i.e. the ratio between the busy bucket and the total bucket.
+            \item Load factor, i.e. the ratio between the total elements and the total buckets. This corresponds with the average length of chain.
+            \item Fill factor, i.e. the ratio between the busy buckets and the total buckets.
         \end{itemize}
 \end{itemize}
 
@@ -86,21 +88,21 @@ We have considered the below statistics:
 To validate and test our software we use two main tools: the sanitizers and the profiler.
 
 \subsection{Sanitizers}
-A sanitizer is a dynamic code analyzer integreted in the compiler that allow us to discover runtime errors in out code. The tool instruments the code to store metadata for each variable and this allow to detect runtime errors that the compiler can't see because it works in a static way.
+A sanitizer is a dynamic code analyzer integrated in the compiler that allow us to discover runtime errors in out code. The tool instruments the code to store metadata for each variable and this allow to detect runtime errors that the compiler can't see because it works in a static way.
 
-The sanitezer is usefull during the developmet phase. In the release version we compile with the sanitizer because it introduce complexity and brings to a performance degradation.
+The sanitizer is useful during the development phase. In the release version we compile without the sanitizer because it introduces complexity and brings to a performance degradation.
 
 \myskip
 
 The sanitizers tool that we used are the following:
 \begin{itemize}
-    \item \textbf{Address (ASan)}: Is usefull for the detection of memory corruction errors like buffer over flow, use after free and memory leak.
-    \item \textbf{Undefined (UBSan)}: Is usefull for the detection of undefined behavior in the code, i.e., partion of code that isn't conformant with the standard.
+    \item \textbf{Address (ASan)}: Is useful for the detection of memory corruption errors like buffer overflow, use after free and memory leak.
+    \item \textbf{Undefined (UBSan)}: Is useful for the detection of undefined behavior in the code, i.e., portion of code that isn't conformant with the standard.
     \item \textbf{Memory (MSan)}: Detects the use of uninitialized memory. In MacOS it isn't supported, but it is present anyway.
 \end{itemize}
 
 \subsection{Profiler}
-Profiling is a technique for analysing the performance of our software: it is usefull to understand where the code spends most of its time and how many functions are called.
+Profiling is a technique for analysing the performance of our software: it is useful to understand where the code spends most of its time and how many functions are called.
 
 There are two techniques that profilers use: sampling, that is more efficient but less precise; instrumentation, that is very accurate but more expensive.
 
@@ -110,7 +112,7 @@ In our project we used the \href{https://developer.ridgerun.com/wiki/index.php/P
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Execution}
-The execution of the project requires two step: the download of test input or real imput (the one used for the analysis), simply executing \texttt{download\_test.sh} script or \texttt{download\_input.sh} script in \texttt{exec/} folder; the second spet is executing the script named \texttt{executing.sh}, always in the \texttt{exec/} folder. This last script execution execute the program on the file previusly downloaded intput text with all performance flag on. In the same folder there are also others script for the execution with profiling (different type) or with the sanitizers or in debug mode.
+The execution of the project requires two steps: the download of test input or real input (the one used for the analysis), simply executing \texttt{download\_test.sh} script or \texttt{download\_input.sh} script in \texttt{exec/} folder; the second step is executing the script named \texttt{execution.sh}, always in the \texttt{exec/} folder. This last script execution executes the program on the file previously downloaded input text with all performance flags on. In the same folder there are also others script for the execution with profiling (different type) or with the sanitizers or in debug mode.
 
 
-To execute the project you have to execute one of the shell script in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/master/exec}{exec folder}. The \textit{download\_data.sh} is an helper script that is used in the other.
+To execute the project you have to execute one of the shell script in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/master/exec}{exec folder}. The \textit{download\_data.sh} is a helper script that is used in the other.

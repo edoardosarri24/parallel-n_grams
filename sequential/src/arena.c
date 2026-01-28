@@ -23,7 +23,7 @@ static ArenaBlock *arena_new_block(size_t size) {
     // Allocate struct + data
     ArenaBlock *block = (ArenaBlock *)malloc(sizeof(ArenaBlock) + size);
     check_initialization(block, "Failed to allocate arena block");
-    block->next = NULL;
+    block->next = nullptr;
     block->size = size;
     block->used = 0;
     return block;

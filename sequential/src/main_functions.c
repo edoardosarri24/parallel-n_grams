@@ -30,8 +30,8 @@ static bool get_next_word(const char **data_cursor, const char *data_end, char *
         current_data_cursor++;
     }
     next_word[i] = '\0';
-    if (word_len) *word_len = i; // return also the length of the word.
     // return.
+    if (word_len) *word_len = i; // return also the length of the word.
     *data_cursor = current_data_cursor;
     return true;
 }
@@ -56,7 +56,7 @@ const char* map_file(const char *input_filepath, size_t *input_size) {
         return nullptr;
     }
     // mapping the file.
-    const char *input_data = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    const char *input_data = mmap(nullptr, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (input_data == MAP_FAILED) {
         perror("Error mapping file");
         close(fd);
@@ -71,7 +71,7 @@ const char* map_file(const char *input_filepath, size_t *input_size) {
 }
 
 HashTable* populate_hashtable(const char *start, const char *end) {
-    // initializing hash table if the input file is ok.
+    // initializing hash table and continue if the input file is ok.
     HashTable *hashTable = create_hash_table(HASH_TABLE_DIMENSION);
     if (start == nullptr || end == nullptr || start >= end)
         return hashTable;
@@ -89,24 +89,24 @@ HashTable* populate_hashtable(const char *start, const char *end) {
     // process the input file word by word.
     int head = 0; // points to the start of current n-gram.
     char current_ngram_string[N_GRAM_SIZE * MAX_WORD_LEN]; // the start of the new k-gram.
+    // main loop.
     while (get_next_word(&data_cursor, data_end, words[(head + N_GRAM_SIZE-1) % N_GRAM_SIZE], &lengths[(head + N_GRAM_SIZE-1) % N_GRAM_SIZE])) {
-        // Construct the n-gram string from the current window
+        // construct the n-gram string from the current window.
         char *dest = current_ngram_string; // mobile cursor of the new k-gram.
         for (int i=0; i<N_GRAM_SIZE; i++) {
             int idx = (head + i) % N_GRAM_SIZE;
             size_t len = lengths[idx];
             memcpy(dest, words[idx], len);
             dest += len;
-            if (i < N_GRAM_SIZE - 1) {
+            if (i < N_GRAM_SIZE-1) {
                 *dest = ' ';
                 dest++;
             }
         }
         *dest = '\0';
-        //handle the current n-gram.
+        // handle the current n-gram.
         size_t ngram_len = dest - current_ngram_string;
         add_gram(hashTable, current_ngram_string, ngram_len);
-        // the head becomes the next word.
         head = (head+1) % N_GRAM_SIZE;
     }
     // return

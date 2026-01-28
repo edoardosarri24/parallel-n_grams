@@ -1,17 +1,17 @@
 \chapter{Analysis}
 \label{cap:analysis}
-In this Chapter we consider the time performance of our project. We will focus on the difference and the speed-up between the sequential version, described in Chapter~\ref{cap:sequential}, and the parallel version, described in Chapter~\ref{cap:parallel}.
+In this chapter we consider the time performance of our project. We will focus on the difference and the speed-up between the sequential version, described in Chapter~\ref{cap:sequential}, and the parallel version, described in Chapter~\ref{cap:parallel}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Sequential}
 Here we evaluate the performance of the sequential implementation of the program.
 
 \subsection{Arena allocator}
-In this \href{https://downloads.wortschatz-leipzig.de/corpora/eng_news_2024_1M.tar.gz}{test input file} we obtain a completion time about 18 second. After the implemention that allow us to allocation block of contigous memory, we obtain a total execution time about 10 second. This is a huge improvment in out performance. 
+With this \href{https://downloads.wortschatz-leipzig.de/corpora/eng_news_2024_1M.tar.gz}{test input file} we obtain a completion time of about 18 seconds. After the implementation that allows us to allocate blocks of contiguous memory, we obtain a total execution time of about 10 seconds. This is a huge improvement in our performance.
 
-We see also the benefit of this approch during the freeing of the hash table. In the first version we took abound 2 second, while in the final version the free is irrilevan with 0.0027 seconds.
+We see also the benefit of this approach during the freeing of the hash table. In the first version we took around 2 seconds, while in the final version the free is irrelevant with 0.0027 seconds.
 
-We saw the same effect also using the profiler. In the first version our code spend the approx whole time in system call operation (i.e., \texttt{malloc}); with the second approach the main time is spend in add gram operation.
+We saw the same effect also using the profiler. In the first version our code spent practically the whole time in system call operations (i.e., \texttt{malloc}); with the second approach the main time is spent in the \texttt{add\_gram} operation.
 
 \subsection{Time analysis}
 Now we see the performance on the final test case.

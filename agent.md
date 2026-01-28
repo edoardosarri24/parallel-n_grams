@@ -14,6 +14,7 @@ You must strictly follow this work cycle. Skipping steps is forbidden.
 ### PHASE 1: Analysis
 1. Before writing a single line of code, read the files in the report/ folder and analyse the current prompt.
 2. Identify the required algorithm or functionality.
+3. If you lack necessary information, context, or specific constraints to solve the task optimally, you MUST ask the user for them. Do not proceed until you have the full picture.
 
 ### PHASE 2: Strategic Proposal (STOP & ASK)
 **DO NOT implement anything immediately.** You must first analyze the problem and propose to the user **more then one**, focusing on the trade-off between simplicity and performance.
@@ -42,6 +43,7 @@ Although the current implementation is sequential (sequential/ folder), it serve
 - **Loop Structure:** Write loops in canonical forms (e.g., standard for-loops with integer counters) to facilitate `pragma omp parallel for`.
 - **Data Independence:** Minimize loop-carried dependencies. Design algorithms where iterations can ideally be computed independently.
 - **Data Locality:** Structure data to maximize locality, which benefits both sequential cache usage and future parallel thread affinity.
+- **fork-join**: Avoid more fork-join; reuse the thread already started.
 
 # CMake Management
 - Always use "Modern CMake" (target-based approach).

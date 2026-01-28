@@ -3,4 +3,4 @@ report/build/
 build/
 data/
 sequential/result_profiling/
-sequential/result_profiling/
+parallel/result_profiling
