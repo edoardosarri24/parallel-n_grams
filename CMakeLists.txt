@@ -1,35 +1,56 @@
 cmake_minimum_required(VERSION 3.21)
-project(trigrams C)
+project(n-grams C)
 
-# main configuration
+# set default build type to Release if not specified.
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build")
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build (Debug, Release, RelWithDebInfo, MinSizeRel)" FORCE)
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    add_compile_options(-march=native)
-endif()
-
+# standard C configuration.
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-add_compile_options(-Wall -Wextra) # fault and styling flags.
 
-# sanitizers ENABLE_AUBSAN
+# global warnings
+add_compile_options(-Wall -Wextra -Wpedantic -Wconversion -Wno-unused-parameter)
+
+# performance flags.
+
+include(CheckIPOSupported) # optimizing in link pahse.
+check_ipo_supported(RESULT lto_supported OUTPUT error)
+
+if(CMAKE_BUILD_TYPE MATCHES "Release|RelWithDebInfo")
+    add_compile_options(-march=native -mtune=native)
+
+    if(lto_supported)
+        message(STATUS "LTO (Link Time Optimization) is enabled.")
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    else()
+        message(WARNING "LTO not supported: ${error}")
+    endif()
+
+    add_compile_options(-O3 -funroll-loops)
+endif()
+
+# sanitizers.
 option(ENABLE_AUBSAN "Enable address and undefined sanitizers" OFF)
 option(ENABLE_MSAN "Enable memory sanitizer" OFF)
+
 if(ENABLE_AUBSAN AND ENABLE_MSAN)
-    message(FATAL_ERROR "Cannot enable both AddressSanitizer (ENABLE_AUBSAN) and MemorySanitizer (ENABLE_MSAN) at the same time.")
+    message(FATAL_ERROR "Cannot enable both ASan and MSan at the same time.")
 endif()
+
 if(ENABLE_AUBSAN)
-    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer) # the last is for clear messages
+    message(STATUS "Sanitizers: Address and Undefined behavior enabled.")
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g)
     add_link_options(-fsanitize=address,undefined)
 elseif(ENABLE_MSAN)
-    add_compile_options(-fsanitize=memory -fsanitize-memory-track-origins -fno-omit-frame-pointer)
+    message(STATUS "Sanitizers: Memory enabled.")
+    add_compile_options(-fsanitize=memory -fsanitize-memory-track-origins -fno-omit-frame-pointer -g)
     add_link_options(-fsanitize=memory)
 endif()
 
-# OpenMP
+# OpenMP.
 if(APPLE)
     if(EXISTS "/opt/homebrew/opt/libomp")
         set(OpenMP_ROOT "/opt/homebrew/opt/libomp")
@@ -39,22 +60,24 @@ if(APPLE)
 endif()
 find_package(OpenMP REQUIRED)
 
-# GPerftools Profiling
-option(ENABLE_PROFILING "Link against gperftools for CPU profiling" ON)
+# profiling (GPerftools).
+option(ENABLE_PROFILING "Link against gperftools for CPU profiling" OFF) # Default OFF to avoid linking issues unless requested
 if(ENABLE_PROFILING)
     find_library(GPERFTOOLS_PROFILER profiler)
     if(GPERFTOOLS_PROFILER)
+        message(STATUS "Profiling enabled: Linking against gperftools.")
         add_link_options(${GPERFTOOLS_PROFILER})
-        add_compile_options(-O3 -g -fno-omit-frame-pointer)
+        # Profiling needs frame pointers and symbols
+        add_compile_options(-fno-omit-frame-pointer -g)
     else()
-        message(WARNING "GPerftools profiler library not found. Install it (e.g., 'brew install gperftools') to enable profiling.")
+        message(WARNING "GPerftools profiler library not found. Install it to enable profiling.")
     endif()
 endif()
 
-# hyperparameters
+# hyperparameters.
 set(N_GRAM_SIZE 3 CACHE STRING "Size of the n-gram")
 set(TOP_K 10 CACHE STRING "Number of top n-grams to display")
 
-# projects
+# subprojects
 add_subdirectory(sequential)
 add_subdirectory(parallel)

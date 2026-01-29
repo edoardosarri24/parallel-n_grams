@@ -45,7 +45,7 @@ TextStatistics calculate_text_statistics(HashTable *hashTable) {
     }
     // sort top_ngrams if there is at least one ngram.
     if (stats.unique_ngrams > 0) {
-        qsort(stats.top_ngrams, stats.top_filled, sizeof(Node *), compare_nodes);
+        qsort(stats.top_ngrams, (size_t)stats.top_filled, sizeof(Node *), compare_nodes);
     }
     return stats;
 }

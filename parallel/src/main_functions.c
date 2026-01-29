@@ -9,10 +9,8 @@
 #include <omp.h>
 #include "main_functions.h"
 #include "hash_table.h"
+#include "parameters.h"
 #include "my_utils.h"
-
-#define HASH_TABLE_DIMENSION 10000019
-#define MAX_WORD_LEN 256
 
 // Modified to return the start position of the word found
 static bool get_next_word(const char **data_cursor, const char *data_end, char *next_word, size_t *word_len, const char **word_start_out) {
@@ -31,7 +29,7 @@ static bool get_next_word(const char **data_cursor, const char *data_end, char *
     size_t i = 0;
     while (current_data_cursor < data_end && isalnum((unsigned char)*current_data_cursor)) {
         if (i < MAX_WORD_LEN-1)
-            next_word[i++] = tolower((unsigned char)*current_data_cursor);
+            next_word[i++] = (char)tolower((unsigned char)*current_data_cursor);
         current_data_cursor++;
     }
     next_word[i] = '\0';
@@ -53,18 +51,18 @@ const char* map_file(const char *input_filepath, size_t *input_size) {
         close(fd);
         exit(EXIT_FAILURE);
     }
-    *input_size = sb.st_size;
+    *input_size = (size_t)sb.st_size;
     if (sb.st_size == 0) {
         close(fd);
         return NULL;
     }
-    const char *input_data = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    const char *input_data = mmap(NULL, (size_t)sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (input_data == MAP_FAILED) {
         perror("Error mapping file");
         close(fd);
         exit(EXIT_FAILURE);
     }
-    if (madvise((void *)input_data, sb.st_size, MADV_SEQUENTIAL) == -1)
+    if (madvise((void *)input_data, (size_t)sb.st_size, MADV_SEQUENTIAL) == -1)
         perror("Warning: madvise failed");
     close(fd);
     return input_data;
@@ -109,7 +107,7 @@ static void populate_local_table(HashTable *my_table, const char *data_cursor, c
         }
         *dest = '\0';
         // handle the current n-gram.
-        size_t ngram_len = dest - current_ngram_string;
+        size_t ngram_len = (size_t)(dest - current_ngram_string);
         add_gram(my_table, current_ngram_string, ngram_len);
         head = (head + 1) % N_GRAM_SIZE;
     }
@@ -122,18 +120,18 @@ HashTable* populate_hashtable(const char *start, const char *end) {
         return global_table;
     // allocation of local table accessible out of threads.
     int max_threads = omp_get_max_threads(); // avoid segmentation falut on the local hashtable.
-    HashTable **local_tables = (HashTable **)calloc(max_threads, sizeof(HashTable*));
+    HashTable **local_tables = (HashTable **)calloc((size_t)max_threads, sizeof(HashTable*));
     check_initialization(local_tables, "Failed to allocate local_tables array");
     #pragma omp parallel default(none) shared(local_tables, global_table) firstprivate(start, end)
     {
         // chunking and threads bounds.
         int tid = omp_get_thread_num();
         int n_threads = omp_get_num_threads();
-        size_t total_len = end - start;
-        size_t chunk_size = total_len / n_threads;
+        size_t total_len = (size_t)(end - start);
+        size_t chunk_size = total_len / (size_t)n_threads;
         // calculate the thread bounds.
-        const char *my_start = start + tid * chunk_size;
-        const char *my_end = (tid == n_threads - 1) ? end : start + (tid + 1) * chunk_size;
+        const char *my_start = start + (size_t)tid * chunk_size;
+        const char *my_end = (tid == n_threads - 1) ? end : start + ((size_t)tid + 1) * chunk_size;
         if (tid > 0) { // the main thread is already allign with the correct (first) word.
             // If the character before my_start is alphanumeric, we are inside a word or at its end.
             if (my_start > start && isalnum((unsigned char)*(my_start - 1))) { // if the first character isn't the first character...

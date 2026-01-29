@@ -13,9 +13,10 @@ if [[ "$MODE" != "seq" && "$MODE" != "par" ]]; then
     exit 1
 fi
 
-echo "building..."
+echo "building (Profiling)..."
 rm -rf build
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_AUBSAN=OFF -DENABLE_PROFILING=ON -DENABLE_MSAN=OFF
+# RelWithDebInfo + Profiling ON
+cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_PROFILING=ON
 cmake --build build
 
 echo "executing ($MODE)..."

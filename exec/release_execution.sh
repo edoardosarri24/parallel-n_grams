@@ -12,9 +12,11 @@ if [[ "$MODE" != "seq" && "$MODE" != "par" ]]; then
     exit 1
 fi
 
-echo "building..."
+echo "building (Release)..."
+# Clean build for release to ensure no stale artifacts
 rm -rf build
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_AUBSAN=OFF -DENABLE_PROFILING=OFF -DENABLE_MSAN=OFF
+# We rely on CMake defaults, just forcing Release type
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 
 echo "executing ($MODE)..."

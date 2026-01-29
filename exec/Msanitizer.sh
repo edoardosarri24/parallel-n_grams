@@ -12,9 +12,10 @@ if [[ "$MODE" != "seq" && "$MODE" != "par" ]]; then
     exit 1
 fi
 
-echo "building..."
+echo "building (MSan)..."
 rm -rf build
-cmake -S . -B build -DENABLE_AUBSAN=OFF -DENABLE_PROFILING=OFF -DENABLE_MSAN=ON
+# RelWithDebInfo + MSan
+cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_MSAN=ON
 cmake --build build
 
 echo "executing ($MODE)..."

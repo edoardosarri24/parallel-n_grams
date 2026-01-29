@@ -4,9 +4,9 @@
 #include "arena.h"
 
 typedef struct Node {
-    char *gram;
-    int counter;
     struct Node *next;
+    int counter;
+    char gram[]; // Flexible Array Member (C99)
 } Node;
 
 typedef struct HashTable {

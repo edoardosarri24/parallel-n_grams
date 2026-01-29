@@ -59,7 +59,7 @@ For the $M$ and $p$ value in general there is a rule of thumb that says to pick 
 \label{sec:overflow}
 Thanks to these choices and the calculation trick for the hash function, defined in Section~\ref{sec:normalizzation}, we are sure that we haven't overflow error if we store the intermediate result in 32 bits variable.
 
-In fact, suppose that $H_i$ can be stored in 32 bits we can prove that the intermediate variable used can be stored in 32 bits: in the worst case we have that $intermediate\_var\_dim=(M-1)\cdot p+c_{max}<2^{32}$.
+In fact, suppose that $H_i$ can be stored in 32bits we can prove that the intermediate variable used can be stored in 32 bits: in the worst case we have $intermediate\_var\_dim=(M-1)\cdot p+c_{max}<2^{32}$.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Statistics}
