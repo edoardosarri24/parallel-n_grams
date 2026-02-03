@@ -15,7 +15,6 @@ fi
 
 echo "building (Profiling)..."
 rm -rf build
-# RelWithDebInfo + Profiling ON
 cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_PROFILING=ON
 cmake --build build
 

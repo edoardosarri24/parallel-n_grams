@@ -14,8 +14,6 @@ fi
 
 echo "building (ASan + UBSan)..."
 rm -rf build
-# RelWithDebInfo gives us optimizations (-O2/-O3) AND debug symbols (-g)
-# This is ideal for sanitizers: run fast enough to test, but give line numbers on error.
 cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_AUBSAN=ON
 cmake --build build
 

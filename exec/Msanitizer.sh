@@ -14,7 +14,6 @@ fi
 
 echo "building (MSan)..."
 rm -rf build
-# RelWithDebInfo + MSan
 cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_MSAN=ON
 cmake --build build
 

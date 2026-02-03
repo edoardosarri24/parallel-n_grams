@@ -14,7 +14,6 @@ fi
 
 echo "building (Debug)..."
 rm -rf build
-# Explicitly set Debug to enable symbols and disable optimizations
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 

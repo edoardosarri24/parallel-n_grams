@@ -13,9 +13,7 @@ if [[ "$MODE" != "seq" && "$MODE" != "par" ]]; then
 fi
 
 echo "building (Release)..."
-# Clean build for release to ensure no stale artifacts
 rm -rf build
-# We rely on CMake defaults, just forcing Release type
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 

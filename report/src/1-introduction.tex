@@ -7,22 +7,22 @@ This is the \href{https://github.com/edoardosarri24/parallel-trigrams}{repositor
 \section{Features}
 Obviously the main goal is to count the $n$-grams. Other features are:
 \begin{itemize}
-    \item We can define the $n$ value (of the $n$-gram) at compilation time passing the parameter $N\_GRAM\_SIZE$. By default is $N\_GRAM\_SIZE=3$.
+    \item We can define the $n$ value (of the $n$-gram) at compilation time passing the parameter $N\_GRAM\_SIZE$. By default, $N\_GRAM\_SIZE=3$.
     \item At the end of computation, the system prints some statistics (see Section~\ref{sec:statistics}) about the text and about the hash table performance.
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Input and Normalization}
 \label{sec:normalizzation}
-For simplifying the implementation the code works well only with English sentences. This allows us to treat a character as a single byte; if there are strange charachters the code could treat them with undefined behaviuor.
+To simplify the implementation, the code works well only with English sentences. This allows us to treat a character as a single byte; if there are strange characters the code could treat them with undefined behavior.
 
-The data sources came from a plain text collection of \href{https://huggingface.co/datasets/allenai/c4/tree/main/en}{Hugging Face}. We have a \href{https://github.com/edoardosarri24/parallel-trigrams/blob/7f22592a9d7207587b74a349d66fbb2a12994c38/exec/script_download_input/main.py}{script} that allow as to pass the desiderated size (in MB) and it handles the download in the correct directory with the correct name.
+The data sources come from a plain text collection of \href{https://huggingface.co/datasets/allenai/c4/tree/main/en}{Hugging Face}. We have a \href{https://github.com/edoardosarri24/parallel-trigrams/blob/7f22592a9d7207587b74a349d66fbb2a12994c38/exec/script_download_input/main.py}{script} that allows us to pass the desired size (in MB) and it handles the download in the correct directory with the correct name.
 
 \myskip
 
 We want to normalize the input so that similar words will be represented by the same token, i.e., we want to create equivalence classes that contain similar words. This helps us to reduce the dimension of the word dictionary that composes the trigrams.
 
-We addressed this in these ways:
+We addressed this in the following ways:
 \begin{itemize}
     \item Bring all characters in lower case form.
     \item Remove all the punctuation like periods, commas and exclamation points.
@@ -38,7 +38,7 @@ We have to be able to count the trigrams; to address efficiently this goal we wi
 \label{sec:hash_function}
 In a hash table we must define the hash function to calculate the table index of the elements. We have to calculate the index of strings, so we adopt the \textbf{Polynomial Hash} technique~\cite{polinomial_strings_hashing}: given the string $c=c_1\cdots c_n$, its hash value is defined by $$\displaystyle H(c)=\left(\sum_{i=1}^n c_i\cdot p^{n-i}\right) \mod M.$$
 
-This approach to obtain the hash value is inefficient and dangerous for the overflow. We can exploit the distributive property of the module operation: given $H(c_1\cdots c_i)$, we can obtain $H(c_1\cdots c_ic_{i+1})=(H(c_1\cdots c_i)\cdot p+c_{i+1}) \mod M$. This guarantees, with the correct choice of $p$ and $M$ like the one below, the absence of overflow.
+This approach to obtain the hash value is inefficient and dangerous due to overflow. We can exploit the distributive property of the module operation: given $H(c_1\cdots c_i)$, we can obtain $H(c_1\cdots c_ic_{i+1})=(H(c_1\cdots c_i)\cdot p+c_{i+1}) \mod M$. This guarantees, with the correct choice of $p$ and $M$ like the one below, the absence of overflow.
 
 \subsection{Hash Table Characteristics}
 Considering what was said above, the hash table has these characteristics:
@@ -51,20 +51,20 @@ Considering what was said above, the hash table has these characteristics:
 \subsection{Choice of Hyperparameters}
 For the $M$ and $p$ value in general there is a rule of thumb that says to pick both values as prime numbers with M as large as possible. Starting from this:
 \begin{itemize}
-    \item $p$: Must be greater than the dimension of the alphabet to reduce the probability of collisions. In the computing we analyse the corpus byte-by-byte, so if the $p$ value is larger than 256 it will be fine. We took $p=257$, the first prime number after 256.
-    \item $M$: The choice of $M$ determines the fill factor of the hash table, that can be defined as $\alpha=\tfrac{busy\_buckets}{table\_dimension}$. We compute it empirically as $M=10000019$; this choice allows us to have a good fill factor (i.e., 0.75 circa) in a big corpus in order to have a good compromise between memory usage and speed.
+    \item $p$: Must be greater than the dimension of the alphabet to reduce the probability of collisions. In the computation, we analyze the corpus byte-by-byte, so if the $p$ value is larger than 256 it will be fine. We took $p=257$, the first prime number after 256.
+    \item $M$: The choice of $M$ determines the fill factor of the hash table, that can be defined as $\alpha=\tfrac{busy\_buckets}{table\_dimension}$. We compute it empirically as $M=10000019$; this choice allows us to have a good fill factor (i.e., 0.75 circa) on a big corpus in order to have a good compromise between memory usage and speed.
 \end{itemize}
 
 \subsection{Overflow}
 \label{sec:overflow}
-Thanks to these choices and the calculation trick for the hash function, defined in Section~\ref{sec:normalizzation}, we are sure that we haven't overflow error if we store the intermediate result in 32 bits variable.
+Thanks to these choices and the calculation trick for the hash function, defined in Section~\ref{sec:normalizzation}, we are sure that we won't have overflow errors if we store the intermediate result in a 32-bit variable.
 
-In fact, suppose that $H_i$ can be stored in 32bits we can prove that the intermediate variable used can be stored in 32 bits: in the worst case we have $intermediate\_var\_dim=(M-1)\cdot p+c_{max}<2^{32}$.
+In fact, suppose that $H_i$ can be stored in 32 bits; we can prove that the intermediate variable used can be stored in 32 bits: in the worst case we have $intermediate\_var\_dim=(M-1)\cdot p+c_{max}<2^{32}$.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Statistics}
 \label{sec:statistics}
-Once we have populated the hash table structure we have to print the statistics of our $n$-gram. In some case printing the distribution (i.e., the PDF) of our dataset is useful, but in this case this means printing the frequency of all encountered word: for a big corpus this is not recommended due to the high number of unique $n$-grams.
+Once we have populated the hash table structure we have to print the statistics of our $n$-gram. In some cases, printing the distribution (i.e., the PDF) of our dataset is useful, but in this case this means printing the frequency of all encountered words: for a big corpus this is not recommended due to the high number of unique $n$-grams.
 
 We have considered the below statistics:
 \begin{itemize}
@@ -88,13 +88,13 @@ We have considered the below statistics:
 To validate and test our software we use two main tools: the sanitizers and the profiler.
 
 \subsection{Sanitizers}
-A sanitizer is a dynamic code analyzer integrated in the compiler that allow us to discover runtime errors in out code. The tool instruments the code to store metadata for each variable and this allow to detect runtime errors that the compiler can't see because it works in a static way.
+A sanitizer is a dynamic code analyzer integrated in the compiler that allows us to discover runtime errors in our code. The tool instruments the code to store metadata for each variable and this allows detecting runtime errors that the compiler can't see because it works in a static way.
 
-The sanitizer is useful during the development phase. In the release version we compile without the sanitizer because it introduces complexity and brings to a performance degradation.
+The sanitizer is useful during the development phase. In the release version we compile without the sanitizer because it introduces complexity and brings a performance degradation.
 
 \myskip
 
-The sanitizers tool that we used are the following:
+The sanitizer tools that we used are the following:
 \begin{itemize}
     \item \textbf{Address (ASan)}: Is useful for the detection of memory corruption errors like buffer overflow, use after free and memory leak.
     \item \textbf{Undefined (UBSan)}: Is useful for the detection of undefined behavior in the code, i.e., portion of code that isn't conformant with the standard.
@@ -114,6 +114,6 @@ In our project we used the \href{https://developer.ridgerun.com/wiki/index.php/P
 \section{Execution}
 The execution of the project requires two steps:
 \begin{enumerate}
-    \item The download of the input. We have to exec the \texttt{exec/download\_input.sh} script, passing the desiderated dimensione of the final file; examples are 500 (i.e. 500MB), 1GB, 1.5GB.
-    \item Finally we can execute one the script in \texttt{exec/} folder. Which scirpt depends on our interest: see \href{https://github.com/edoardosarri24/parallel-trigrams/blob/7f22592a9d7207587b74a349d66fbb2a12994c38/README.md}{README} for more details.
+    \item The download of the input. We have to exec the \texttt{exec/download\_input.sh} script, passing the desired dimension of the final file; examples are 500 (i.e. 500MB), 1GB, 1.5GB.
+    \item Finally we can execute one of the scripts in the \texttt{exec/} folder. Which script depends on our interest: see \href{https://github.com/edoardosarri24/parallel-trigrams/blob/7f22592a9d7207587b74a349d66fbb2a12994c38/README.md}{README} for more details.
 \end{enumerate}

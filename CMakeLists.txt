@@ -15,21 +15,18 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_compile_options(-Wall -Wextra -Wpedantic -Wconversion -Wno-unused-parameter)
 
 # performance flags.
-
 include(CheckIPOSupported) # optimizing in link pahse.
 check_ipo_supported(RESULT lto_supported OUTPUT error)
 
 if(CMAKE_BUILD_TYPE MATCHES "Release|RelWithDebInfo")
     add_compile_options(-march=native -mtune=native)
-
+    add_compile_options(-O3 -funroll-loops)
     if(lto_supported)
         message(STATUS "LTO (Link Time Optimization) is enabled.")
         set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
     else()
         message(WARNING "LTO not supported: ${error}")
     endif()
-
-    add_compile_options(-O3 -funroll-loops)
 endif()
 
 # sanitizers.

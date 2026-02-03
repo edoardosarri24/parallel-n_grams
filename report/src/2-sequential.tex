@@ -7,18 +7,18 @@ In this chapter we present the main aspects of the sequential implementation to 
 \label{sec:seq_pipeline}
 Let's look at the pipeline of our sequential algorithm. This was implemented in the \href{https://github.com/edoardosarri24/parallel-trigrams/blob/c57c7fc52c9bcaa8fb9ba1403b795b0793713a49/sequential/src/main.c}{main.c} file, that calls some \href{https://github.com/edoardosarri24/parallel-trigrams/blob/9cb6df2017839747880f7a6894f47d003c5d373c/sequential/src/helper_functions.c}{helper functions}.
 \begin{enumerate}
-    \item We map the input file, that must be \texttt{data/input.txt}, into memory using the POSIX \texttt{mmap} system call. This allows us to access the file content as a byte array, letting the operating system handle paging efficiently. Because we only read the file in the sequential order, we inform the kernel about this with the \texttt{madvise} function with the \texttt{MADV\_SEQUENTIAL} flag.
+    \item We map the input file, which must be \texttt{data/input.txt}, into memory using the POSIX \texttt{mmap} system call. This allows us to access the file content as a byte array, letting the operating system handle paging efficiently. Because we only read the file in sequential order, we inform the kernel about this using the \texttt{madvise} function with the \texttt{MADV\_SEQUENTIAL} flag.
     \item We allocate memory for the hash table.
-    \item We use a circular buffer of size $\textit{N\_GRAM\_SIZE}$ to maintain the current sliding window of words, i.e. the words that compose the current $n$-gram.
-    \item We fill the buffer with the initial $N-1$ words using the \texttt{get\_next\_word} function; if the input file doesn't contain $N-1$ words, we return. This helps us to maintain the loop clean across all the file.
+    \item We use a circular buffer of size $\textit{N\_GRAM\_SIZE}$ to maintain the current sliding window of words, i.e., the words that compose the current $n$-gram.
+    \item We fill the buffer with the initial $N-1$ words using the \texttt{get\_next\_word} function; if the input file doesn't contain $N-1$ words, we return. This helps us maintain the loop cleanly across the whole file.
     \item We iterate through the rest of the file word by word:
     \begin{enumerate}
         \item Read the next word and write it into the circular buffer.
-        \item Construct the current $n$-gram string by concatenating the words in the buffer starting from the correct head. To handle tokens with a very high length we use a buffer with 256 bytes allocated in the stack.
+        \item Construct the current $n$-gram string by concatenating the words in the buffer starting from the correct head. To handle tokens with a very high length we use a buffer with 256 bytes allocated on the stack.
         \item Use the \texttt{add\_gram} function in the \href{https://github.com/edoardosarri24/parallel-trigrams/blob/cf8e82b27f908c5c836d37a205fc04d8d7fed5be/sequential/src/hash_table.c}{hash\_table.c} file to add the $n$-gram to the hash table. If the $n$-gram already exists, its counter is incremented; otherwise, a new node is created and inserted into the bucket's chain.
         \item Advance the circular buffer head, effectively sliding the window one word forward.
     \end{enumerate}
-    \item Collect and print the statistics. See the Section~\ref{sec:sequential_statistics}
+    \item Collect and print the statistics. See Section~\ref{sec:sequential_statistics}.
     \item Release the memory allocated for the hash table and return.
 \end{enumerate}
 
@@ -26,25 +26,25 @@ Let's look at the pipeline of our sequential algorithm. This was implemented in 
 \section{Hash Table}
 The \href{https://github.com/edoardosarri24/parallel-trigrams/blob/cf8e82b27f908c5c836d37a205fc04d8d7fed5be/sequential/src/hash_table.c}{hash\_table.c} file models the hash table structure and its operations.
 
-\subsection{Implementing Choice}
-In the Section~\ref{sec:overflow} we said that we must use almost a 32-bit variable to avoid the overflow of intermediate value during the index calculation. To obtain this goal we have used the \textit{uint\_fast32\_t} C type that guarantees the faster type that have almost 32 bits.
+\subsection{Implementation Choice}
+In Section~\ref{sec:overflow} we said that we must use at least a 32-bit variable to avoid the overflow of intermediate values during the index calculation. To obtain this goal we have used the \textit{uint\_fast32\_t} C type that guarantees the fastest type that has at least 32 bits.
 
 \myskip
 
-We have analyzed the dimension of the hash table, i.e., the numbers of buckets. In our source code, for the sequential version, we have a table dimension of 10000019; in modern 64-bit architecture a pointer is 8 bytes; the allocation of the only hash table take $8\times 10000019$ bytes, that are circa 76 MB. This was taken into account when we constructed the hash table in the parallel version.
+We have analyzed the dimension of the hash table, i.e., the number of buckets. In our source code, for the sequential version, we have a table dimension of 10000019; in modern 64-bit architecture a pointer is 8 bytes; the allocation of just the hash table takes $8\times 10000019$ bytes, which is circa 76 MB. This was taken into account when we constructed the hash table in the parallel version.
 
 \subsection{Memory Arena}
-In a base implementation we made a \texttt{malloc} operation every $k$-gram added in the hash table. The malloc, while allocate the request portion of memory, allocates also its part for metadata (e.g., dimension of the allocation and the state of the block); this is a big memory overhead if we use frequent and small call to \texttt{malloc}. To avoid the overhead of the memory allocation, also in the way to optimize the code for the future parallel implementation (\texttt{malloc} implies a unique system lock), we implemented a Memory Arena allocator. The arena works by pre-allocating a block of contiguous memory (16MB by default) and using it for each new $k$-gram insertion.
+In a basic implementation, we performed a \texttt{malloc} operation for every $k$-gram added to the hash table. The malloc, while allocating the requested portion of memory, also allocates its metadata (e.g., dimension of the allocation and the state of the block); this is a big memory overhead if we use frequent and small calls to \texttt{malloc}. To avoid the overhead of memory allocation, and also to optimize the code for the future parallel implementation (\texttt{malloc} implies a unique system lock), we implemented a Memory Arena allocator. The arena works by pre-allocating a block of contiguous memory (16MB by default) and using it for each new $k$-gram insertion.
 
-This approach allows us to reduce the number of \texttt{malloc} operations: we make one of this only when the current block is all busy. Another advantage is that in this way we reduce the fragmentation of the memory and improve cache locality. The locality doesn't improve during the scan of the linked list: the nodes in a list aren't added in a sequential manner.
+This approach allows us to reduce the number of \texttt{malloc} operations: we make one of these only when the current block is full. Another advantage is that in this way we reduce memory fragmentation and improve cache locality. Locality doesn't improve during the scan of the linked list: the nodes in a list aren't added in a sequential manner.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Statistics}
 \label{sec:sequential_statistics}
-To extract the statistics described in Section~\ref{sec:statistics}, we implemented two functions in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/master/sequential/src/statistics.c}{statistics.c}. These functions are responsible for the generation of text statistics and hash table performance; the main is responsible for the printing of the results.
+To extract the statistics described in Section~\ref{sec:statistics}, we implemented two functions in \href{https://github.com/edoardosarri24/parallel-trigrams/blob/master/sequential/src/statistics.c}{statistics.c}. These functions are responsible for generating text statistics and hash table performance metrics; the main function is responsible for printing the results.
 
 \subsection{Text Statistics}
-For the text statistics, we explored two different approaches, and we choose the second one.
+For the text statistics, we explored two different approaches, and we chose the second one.
 
 \subsubsection{Two-Steps Approach}
 The algorithm followed these steps:
@@ -78,7 +78,7 @@ Let $N$ be the number of unique $n$-grams and $K$ be the number of top elements 
     \item \textbf{Time Complexity} \\
         In the first approach the bottleneck is the sorting step, which takes $O(N\log N)$. In our implementation we pass through the hash table only once, so we have $O(N)$; for each $n$-gram we pass over $K$ elements, so in total we have $O(N \cdot K)$. Since $K$ is usually very small, the total time complexity is $O(N)$.
     \item \textbf{Space Complexity} \\
-        The first approach requires $O(N)$ extra space for the temporary array. The second approach requires only $O(K)$ that is irrelevant for small $K$.
+        The first approach requires $O(N)$ extra space for the temporary array. The second approach requires only $O(K)$, which is irrelevant for small $K$.
 \end{itemize}
 
 \subsection{Hash Table Performance}
@@ -89,7 +89,7 @@ For the hash table performance the pipeline is the following:
     \item For each bucket:
     \begin{enumerate}
         \item If the bucket is not empty increment \textit{busy\_buckets}.
-        \item Traverse the open chain of bucket to count the nodes.
+        \item Traverse the open chain of the bucket to count the nodes.
         \item Update \textit{max\_chain\_len} if the current chain length is greater than the current maximum.
         \item Add the chain length to \texttt{total\_elements}.
     \end{enumerate}
